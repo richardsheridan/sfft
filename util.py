@@ -68,54 +68,6 @@ def put_file():
 
 
 def cwt(data, wavelet, widths):
-    """
-    Continuous wavelet transform.
-
-    Performs a continuous wavelet transform on `data`,
-    using the `wavelet` function. A CWT performs a convolution
-    with `data` using the `wavelet` function, which is characterized
-    by a width parameter and length parameter.
-
-    Parameters
-    ----------
-    data : (N,) ndarray
-        data on which to perform the transform.
-    wavelet : function
-        Wavelet function, which should take 2 arguments.
-        The first argument is the number of points that the returned vector
-        will have (len(wavelet(length,width)) == length).
-        The second is a width parameter, defining the size of the wavelet
-        (e.g. standard deviation of a gaussian). See `ricker`, which
-        satisfies these requirements.
-    widths : (M,) sequence
-        Widths to use for transform.
-
-    Returns
-    -------
-    cwt: (M, N) ndarray
-        Will have shape of (len(widths), len(data)).
-
-    Notes
-    -----
-    ::
-
-        length = min(10 * width[ii], len(data))
-        cwt[ii,:] = signal.convolve(data, wavelet(length,
-                                    width[ii]), mode='same')
-
-    Examples
-    --------
-    >>> from scipy import signal
-    >>> import matplotlib.pyplot as plt
-    >>> t = np.linspace(-1, 1, 200, endpoint=False)
-    >>> sig  = np.cos(2 * np.pi * 7 * t) + signal.gausspulse(t - 0.4, fc=2)
-    >>> widths = np.arange(1, 31)
-    >>> cwtmatr = signal.cwt(sig, signal.ricker, widths)
-    >>> plt.imshow(cwtmatr, extent=[-1, 1, 31, 1], cmap='PRGn', aspect='auto',
-    ...            vmax=abs(cwtmatr).max(), vmin=-abs(cwtmatr).max())
-    >>> plt.show()
-
-    """
     output = np.zeros([len(widths), len(data)])
     for ind, width in enumerate(widths):
         wavelet_data = wavelet(min(width, len(data)), width / 9)
@@ -162,3 +114,32 @@ def path_with_stab(path):
 def basename_without_stab(images):
     name_gen = (os.path.basename(x).lower() for x in images)
     return [x[len('stab_'):] if x.startswith('stab_') else x for x in name_gen]
+
+
+def parse_strain_dat(straindatpath, max_cycle=None):
+    with open(straindatpath) as f:
+        for i, line in enumerate(f):
+            if i == 3:
+                label = line
+            elif i == 13:
+                width = float(line.split()[0])
+            elif i == 14:
+                thickness = float(line.split()[0])
+            elif i == 16:
+                fid_estimate = float(line.split()[0])
+                break
+    extension, force, time, cycle = np.loadtxt(straindatpath, skiprows=28, usecols=(0, 1, 2, 4), unpack=True)
+    cycle = cycle.astype(int)
+    if max_cycle is not None:
+        cycle = cycle[cycle <= max_cycle]
+    # fudge cycle number to trigger logging of first and last data points
+    cycle[0] = 0
+    cycle[-1] = 0
+    cycle_changes = np.where(np.diff(cycle))
+
+    force = force[cycle_changes]
+    time = time[cycle_changes]
+    extension = extension[cycle_changes]
+
+    # TODO: return maximum force in a cycle
+    return force / width / thickness
