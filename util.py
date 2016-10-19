@@ -117,8 +117,12 @@ def basename_without_stab(images):
 
 
 def parse_strain_dat(straindatpath, max_cycle=None):
+    if os.path.isdir(straindatpath):
+        straindatpath = os.path.join(straindatpath, 'STRAIN.DAT')
     with open(straindatpath) as f:
         for i, line in enumerate(f):
+            if i == 0 and not line.startswith(r'C:\IFSS'):
+                raise ValueError('Not a proper IFSS strain file')
             if i == 3:
                 label = line
             elif i == 13:

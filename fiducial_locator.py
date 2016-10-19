@@ -288,6 +288,18 @@ def load_fids(image_path, image=None, fid_args=()):
     return left_fid, right_fid
 
 
+def load_strain(dirname):
+    fid_file = path.join(dirname, FIDUCIAL_FILENAME)
+    with open(fid_file) as fp:
+        import json
+        headers, data = json.load(fp)
+
+    strains = [data[name][2] for name in sorted(data)]
+    initial_displacement = headers['initial_displacement']
+    return np.array(strains), initial_displacement
+
+
+
 def save_fids(parameters, images, left_fids, right_fids):
     initial_displacement = right_fids[0] - left_fids[0]
     strains = (right_fids - left_fids) / initial_displacement

@@ -1,3 +1,4 @@
+import json
 from collections import OrderedDict
 from itertools import starmap as _map, repeat
 from multiprocessing import freeze_support, pool
@@ -283,6 +284,14 @@ def save_breaks(parameters, breaks, images):
     with open(breakpath, mode) as file:
         dump(output, file)
 
+
+def load_breaks(directory):
+    breakfile = path.join(directory, BREAK_FILENAME)
+    with open(breakfile) as fp:
+        header, data = json.load(fp)
+
+    breaks = [data[name][1] for name in sorted(data)]
+    return breaks
 
 if __name__ == '__main__':
     freeze_support()
