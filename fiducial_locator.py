@@ -248,6 +248,9 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
 def batch_fids(image_paths, *args):
     args = itertools.repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
+    freeze_support()
+    p = pool.Pool()
+    _map = p.starmap
     locations = list(_map(locate_fids, args))
     return locations
 
@@ -286,7 +289,6 @@ def load_fids(image_path, image=None, fid_args=()):
         left_fid, right_fid = locate_fids(image, *fid_args)
 
     return left_fid, right_fid
-
 
 def load_strain(dirname):
     fid_file = path.join(dirname, FIDUCIAL_FILENAME)
@@ -331,8 +333,5 @@ def save_fids(parameters, images, left_fids, right_fids):
 
 
 if __name__ == '__main__':
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
     a = FidGUI(get_files())  # , (274,))
     # a = batch_fids(get_files(), 7000, 1000)

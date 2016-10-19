@@ -123,7 +123,7 @@ def parse_strain_dat(straindatpath, max_cycle=None):
         for i, line in enumerate(f):
             if i == 0 and not line.startswith(r'C:\IFSS'):
                 raise ValueError('Not a proper IFSS strain file')
-            if i == 3:
+            if i == 2:
                 label = line
             elif i == 13:
                 width = float(line.split()[0])
@@ -146,4 +146,4 @@ def parse_strain_dat(straindatpath, max_cycle=None):
     extension = extension[cycle_changes]
 
     # TODO: return maximum force in a cycle
-    return force / width / thickness
+    return force / width / thickness, label

@@ -119,6 +119,7 @@ class BreakGUI:
     def refresh_plot(self):
         self.artists['breaks'].set_xdata(self.locations / len(self.profile) * 800)
         self.artists['breaks'].set_ydata(np.full_like(self.locations, 453 / 2))
+        # TODO: indicate breaks in profile plot as well
 
         self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
         self.artists['profile'].set_ydata(self.filtered_profile)
@@ -262,6 +263,9 @@ def batch_breaks(image_paths, slice_width, filter_width, cutoff, fid_args=(), st
     args = (slice_width, filter_width, cutoff, fid_args, stabilize_args)
     args = repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
+    freeze_support()
+    p = pool.Pool()
+    _map = p.starmap
     locations = list(_map(locate_breaks, args))
     return locations
 
@@ -294,9 +298,6 @@ def load_breaks(directory):
     return breaks
 
 if __name__ == '__main__':
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
 
     a = BreakGUI(get_files(), )  # (97.798295454545467, 248.48011363636365, 1), (7000, 1000))
 

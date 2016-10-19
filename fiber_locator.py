@@ -446,9 +446,9 @@ def sobel_edges(image_array, threshold):
     # negative_dy = cv2.adaptiveThreshold(-dy,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,11,threshold_n)
 
     # if iterations:
-    #     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    #     edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=iterations)
-    #     edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=iterations)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
+    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
 
     return edges
 
@@ -502,6 +502,9 @@ def batch_stabilize(image_paths, *args):
     """
     args = tuple(itertools.repeat(args, len(image_paths)))
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
+    freeze_support()
+    p = pool.Pool()
+    _map = p.starmap
     return _map(stabilize_file, args)
 
 
@@ -567,9 +570,6 @@ def save_stab(image_paths, batch, threshold):
 
 
 if __name__ == '__main__':
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
     image_paths = get_files()
     a = FiberGUI(image_paths)  # ,downsample=(5000,600))
     print(a.sliders['threshold'].val)

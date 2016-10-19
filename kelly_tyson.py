@@ -1,12 +1,16 @@
+from multiprocessing import pool
 from os import path
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
+from tkinter.simpledialog import askfloat
 
 import numpy as np
+from multiprocessing import freeze_support
 
-from break_locator import load_breaks
-from fiducial_locator import load_strain
-from util import parse_strain_dat
+from break_locator import load_breaks, BreakGUI
+from fiber_locator import FiberGUI
+from fiducial_locator import load_strain, FidGUI
+from util import parse_strain_dat, get_files
 
 
 def choose_dataset():
@@ -22,19 +26,21 @@ def choose_dataset():
 
 
 def kt_analysis(folder):
-    stress = parse_strain_dat(folder)
+    stress, label = parse_strain_dat(folder)
+    print(label.strip())
 
     fid_strains, initial_displacement = load_strain(folder)
     breaks = load_breaks(folder)
-
-    fid_strains = fid_strains[:len(stress)]  # Should cut off z scans
+    howmany = min(len(stress), len(breaks))
+    stress = stress[:howmany]
+    fid_strains = fid_strains[:howmany]  # Should cut off z scans
     stress /= (1 - 0.5 * fid_strains) ** 2  # Correct for Poisson's ratio???
     break_count = np.array([len(x) for x in breaks])
-    break_count = break_count[:len(stress)]  # Should cut off z scans
+    break_count = break_count[:howmany]  # Should cut off z scans
     avg_frag_len = initial_displacement / (break_count + 1)
 
     l_c = avg_frag_len[-1] / .668
-    stress_at_l_c = np.interp(l_c, avg_frag_len, stress)
+    stress_at_l_c = np.interp(2 * l_c, avg_frag_len, stress)  # factor of 2 accounts for shear lag
     fiber_radius = 5.65
 
     ifss = fiber_radius / l_c * stress_at_l_c
@@ -42,7 +48,13 @@ def kt_analysis(folder):
 
 
 if __name__ == '__main__':
-    folder = choose_dataset()
+    images = get_files()
+    FiberGUI(images)
+    FidGUI(images)
+    BreakGUI(images)
+    # folder = choose_dataset()
+    folder = path.dirname(images[0])
+    print(path.basename(folder))
     ifss, l_c = kt_analysis(folder)
     print('l_c: %.3g um' % l_c)
     print('IFSS: %.3g MPa' % ifss)
