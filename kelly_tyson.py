@@ -26,21 +26,22 @@ def choose_dataset():
 
 
 def kt_analysis(folder):
-    stress, label = parse_strain_dat(folder)
+    matrix_stress, label = parse_strain_dat(folder)
     print(label.strip())
 
     fid_strains, initial_displacement = load_strain(folder)
     breaks = load_breaks(folder)
-    howmany = min(len(stress), len(breaks))
-    stress = stress[:howmany]
+    howmany = min(len(matrix_stress), len(breaks))
+    matrix_stress = matrix_stress[:howmany]
     fid_strains = fid_strains[:howmany]  # Should cut off z scans
-    stress /= (1 - 0.5 * fid_strains) ** 2  # Correct for Poisson's ratio???
+    matrix_stress /= (1 - 0.5 * fid_strains) ** 2  # Correct for Poisson's ratio???
+    fiber_stress = 77000 * fid_strains  # Disgusting course approximation
     break_count = np.array([len(x) for x in breaks])
     break_count = break_count[:howmany]  # Should cut off z scans
     avg_frag_len = initial_displacement / (break_count + 1)
 
     l_c = avg_frag_len[-1] / .668
-    stress_at_l_c = np.interp(2 * l_c, avg_frag_len, stress)  # factor of 2 accounts for shear lag
+    stress_at_l_c = np.interp(2 * l_c, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
     fiber_radius = 5.65
 
     ifss = fiber_radius / l_c * stress_at_l_c
@@ -48,12 +49,12 @@ def kt_analysis(folder):
 
 
 if __name__ == '__main__':
-    images = get_files()
-    FiberGUI(images)
-    FidGUI(images)
-    BreakGUI(images)
-    # folder = choose_dataset()
-    folder = path.dirname(images[0])
+    # images = get_files()
+    # FiberGUI(images)
+    # FidGUI(images)
+    # BreakGUI(images)
+    # folder = path.dirname(images[0])
+    folder = choose_dataset()
     print(path.basename(folder))
     ifss, l_c = kt_analysis(folder)
     print('l_c: %.3g um' % l_c)

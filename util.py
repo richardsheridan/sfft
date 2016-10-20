@@ -132,13 +132,24 @@ def parse_strain_dat(straindatpath, max_cycle=None):
             elif i == 16:
                 fid_estimate = float(line.split()[0])
                 break
-    extension, force, time, cycle = np.loadtxt(straindatpath, skiprows=28, usecols=(0, 1, 2, 4), unpack=True)
+    extension, force, time, s_or_d, cycle = np.loadtxt(straindatpath,
+                                                       skiprows=28,
+                                                       usecols=(0, 1, 2, 3, 4),
+                                                       dtype=[('ex', float),
+                                                              ('f', float),
+                                                              ('t', float),
+                                                              ('sd', '<S6'),
+                                                              ('c', float),
+                                                              ],
+                                                       unpack=True,
+                                                       )
     cycle = cycle.astype(int)
     if max_cycle is not None:
         cycle = cycle[cycle <= max_cycle]
     # fudge cycle number to trigger logging of first and last data points
     cycle[0] = 0
-    cycle[-1] = 0
+    if s_or_d[-1] == b'delay':  # detect if cycle ended properly
+        cycle[-1] = 0
     cycle_changes = np.where(np.diff(cycle))
 
     force = force[cycle_changes]
