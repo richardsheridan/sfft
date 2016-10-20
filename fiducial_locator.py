@@ -297,14 +297,18 @@ def load_strain(dirname):
         headers, data = json.load(fp)
 
     strains = [data[name][2] for name in sorted(data)]
+    toobig = any(strain >= 1 for strain in strains)
     initial_displacement = headers['initial_displacement']
-    return np.array(strains), initial_displacement
+    strains = np.array(strains)
+    if toobig:
+        strains -= 1.0
+    return strains, initial_displacement
 
 
 
 def save_fids(parameters, images, left_fids, right_fids):
     initial_displacement = right_fids[0] - left_fids[0]
-    strains = (right_fids - left_fids) / initial_displacement
+    strains = (right_fids - left_fids) / initial_displacement - 1
     parameters.update({'initial_displacement': initial_displacement * 19000 / 55060,
                        'fields': 'name: (left, right, strain)'})
 
