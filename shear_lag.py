@@ -89,21 +89,22 @@ if __name__ == '__main__':
     fiber_stress = calc_fiber_stress(strains, fiber_modulus)
 
     K = .668
-    l_c = avg_frag_len[-1] / K
-    stress_at_l_c = interpolate(2.0 * l_c, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
-    strain_at_l_c = interpolate(2.0 * l_c, avg_frag_len, strains)
+    critical_length = avg_frag_len[-1] / K
+    stress_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
+    strain_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, strains)
     np.seterr(divide='ignore')
-    matrix_modulus = interpolate(2.0 * l_c, avg_frag_len, matrix_stress / strains)  # secant modulus
+    matrix_modulus = interpolate(2.0 * critical_length, avg_frag_len, matrix_stress / strains)  # secant modulus
     np.seterr(divide='warn')
     # multiplier = kt_multiplier(l_c)
     #
     matrix_radius = 12 * fiber_radius
     # multiplier = cox_multiplier(l_c, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)
     ifss = fiber_radius * stress_at_l_c
-    print('l_c: %.3g um' % l_c)
-    print('KT IFSS: %.3g MPa' % (ifss * kt_multiplier(l_c)))
+    print('l_c: %.3g um' % critical_length)
+    print('KT IFSS: %.3g MPa' % (ifss * kt_multiplier(critical_length)))
     print(
-        'COX IFSS: %.3g MPa' % (ifss * cox_multiplier(l_c, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
+        'COX IFSS: %.3g MPa' % (
+            ifss * cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
 
     # import matplotlib.pyplot as plt
     # fig, axs = plt.subplots(3,1,'col')
