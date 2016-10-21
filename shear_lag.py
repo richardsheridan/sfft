@@ -102,8 +102,7 @@ if __name__ == '__main__':
     ifss = fiber_radius * stress_at_l_c
     print('l_c: %.3g um' % critical_length)
     print('KT IFSS: %.3g MPa' % (ifss * kt_multiplier(critical_length)))
-    print(
-        'COX IFSS: %.3g MPa' % (
+    print('COX IFSS: %.3g MPa' % (
             ifss * cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
 
     # import matplotlib.pyplot as plt

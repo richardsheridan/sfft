@@ -1,4 +1,5 @@
 import sys, os, json
+from time import perf_counter
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 import numpy as np
@@ -71,8 +72,7 @@ def cwt(data, wavelet, widths):
     output = np.zeros([len(widths), len(data)])
     for ind, width in enumerate(widths):
         wavelet_data = wavelet(min(width, len(data)), width / 9)
-        output[ind, :] = convolve(data, wavelet_data,
-                                  mode='same')
+        output[ind, :] = convolve(data, wavelet_data, mode='same')
     return output
 
 
@@ -139,11 +139,10 @@ def parse_strain_dat(straindatpath, max_cycle=None):
                                                               ('f', float),
                                                               ('t', float),
                                                               ('sd', '<S6'),
-                                                              ('c', float),
+                                                              ('c', int),
                                                               ],
                                                        unpack=True,
                                                        )
-    cycle = cycle.astype(int)
     if max_cycle is not None:
         cycle = cycle[cycle <= max_cycle]
     # fudge cycle number to trigger logging of first and last data points
