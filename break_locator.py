@@ -12,6 +12,7 @@ import numpy as np
 from matplotlib.widgets import Slider, Button
 
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab
+from gui import MPLGUI
 
 BREAK_FILENAME = 'breaks.json'
 

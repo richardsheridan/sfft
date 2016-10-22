@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib.widgets import Slider, Button, RadioButtons
 
 from util import get_files, path_with_stab
+from gui import MPLGUI
 
 import cProfile as prof
 
@@ -17,57 +18,60 @@ _map = itertools.starmap
 STABILIZE_FILENAME = 'stabilize.json'
 
 
-class FiberGUI:
+class FiberGUI(MPLGUI):
     def __init__(self, images, block=True, downsample=()):
         self.images = images
-        self.axes = {}
-        self.buttons = {}
-        self.sliders = {}
-        self.t = perf_counter()
-        self.cooldown = .1
-        self.lines = 1
         self.downsample = downsample
         self.display_original = True
         self.display_rotated = False
+        super().__init__()
 
-        self.create_layout()
-        self.load_frame()
-        self.recalculate_vision()
-        self.refresh_plot()
-
-        if block:
-            plt.ioff()
-        else:
-            plt.ion()
-
-        plt.show()
+        self.show(block)
 
     def create_layout(self):
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
         self.fig.subplots_adjust(left=0.1, bottom=0.5)
+        self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
+
         # self.axes['colorbar'] = self.fig.add_axes([.25,.95,.5,.03])
-        self.axes['display'] = self.fig.add_axes([.3, .95, .2, .03])
-        self.buttons['display'] = Button(self.axes['display'], 'Display full')
-        self.buttons['display'].on_clicked(self.display_external)
-        self.axes['save'] = self.fig.add_axes([.3, .90, .2, .03])
-        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
-        self.buttons['save'].on_clicked(self.execute_batch)
-        self.axes['type'] = self.fig.add_axes([.6, .9, .2, .1])
-        self.buttons['type'] = RadioButtons(self.axes['type'], ('original', 'edges', 'rotated'))
-        self.buttons['type'].on_clicked(self.display_type)
+#        self.axes['display'] = self.fig.add_axes([.3, .95, .2, .03])
+#        self.buttons['display'] = Button(self.axes['display'], 'Display full')
+#        self.buttons['display'].on_clicked(self.display_external)
+        self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
+#        self.axes['save'] = self.fig.add_axes([.3, .90, .2, .03])
+#        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
+#        self.buttons['save'].on_clicked(self.execute_batch)
+        self.register_button('type', self.display_type, [.6, .9, .2, .1], widget=RadioButtons, labels=('original', 'edges', 'rotated'))
+#        self.axes['type'] = self.fig.add_axes([.6, .9, .2, .1])
+#        self.buttons['type'] = RadioButtons(self.axes['type'], ('original', 'edges', 'rotated'))
+#        self.buttons['type'].on_clicked(self.display_type)
         # self.artists['image'] = self.axes['image'].imshow([[0,0],[0,0]],cmap='gray')
-
-        slider_width = .55
-        slider_height = .03
-        slider_x_coordinate = .3
-        slider_y_step = .05
-        slider_y_coord = .40
-
-        self.axes['frame_number'] = self.fig.add_axes(
-            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        slider_y_coord -= slider_y_step
-        self.axes['threshold'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        slider_y_coord -= slider_y_step
+#
+#        slider_width = .55
+#        slider_height = .03
+#        slider_x_coordinate = .3
+#        slider_y_step = .05
+#        slider_y_coord = .40
+        self.slider_coords = [.3, .4, .55, .03 ]
+        self.register_slider('frame_number',self.update_frame_number,
+                             isparameter=False,
+                             forceint=True,
+                             label='Frame number',
+                             valmin=0,
+                             valmax=len(self.images) - 1,
+                             valinit=0,
+                             valfmt='%d')
+        self.register_slider('threshold',self.update_edge,
+                             label='edge threshold',
+                             valmin=0,
+                             valmax=2 ** 9 - 1,
+                             valinit=70,
+                             valfmt='%d')
+#        self.axes['frame_number'] = self.fig.add_axes(
+#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        slider_y_coord -= slider_y_step
+#        self.axes['threshold'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        slider_y_coord -= slider_y_step
         # self.axes['edge2'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
         # slider_y_coord -= slider_y_step
         # self.axes['open_close'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
@@ -83,10 +87,10 @@ class FiberGUI:
         #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
         # slider_y_coord -= slider_y_step
 
-        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame number',
-                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
-        self.sliders['threshold'] = Slider(self.axes['threshold'], 'edge threshold',
-                                           valmin=0, valmax=2 ** 9 - 1, valinit=70, valfmt='%d')
+#        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame number',
+#                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
+#        self.sliders['threshold'] = Slider(self.axes['threshold'], 'edge threshold',
+#                                           valmin=0, valmax=2 ** 9 - 1, valinit=70, valfmt='%d')
         # self.sliders['edge2'] = Slider(self.axes['edge2'], 'edge threshold_n',
         #                                valmin=0, valmax=2**9, valinit=70, valfmt='%d')
         # self.sliders['open_close'] = Slider(self.axes['open_close'], 'Open/Close cycles',
@@ -100,9 +104,9 @@ class FiberGUI:
         # self.sliders['hough_max_theta'] = Slider(self.axes['hough_max_theta'], 'Hough max_theta',
         #                                          valmin=-.1, valmax=.1, valinit=.1, valfmt='%.3g')
 
-        self.sliders['frame_number'].on_changed(self.update_frame_number)
+#        self.sliders['frame_number'].on_changed(self.update_frame_number)
         # self.sliders['open_close'].on_changed(self.update_open_close)
-        self.sliders['threshold'].on_changed(self.update_edge)
+#        self.sliders['threshold'].on_changed(self.update_edge)
         # self.sliders['edge2'].on_changed(self.update_edge)
         # self.sliders['hough_rho'].on_changed(self.update_hough)
         # self.sliders['hough_theta'].on_changed(self.update_hough)
@@ -214,14 +218,6 @@ class FiberGUI:
         self.axes['image'].imshow(image, cmap='gray')
         self.fig.canvas.draw()
 
-    def _cooling_down(self):
-        t = perf_counter()
-        if t - self.t <= self.cooldown:
-            return True
-        else:
-            self.t = t
-            return False
-
     def display_external(self, event):
         cv2.namedWindow('display_external', cv2.WINDOW_NORMAL)
         cv2.imshow('display_external', self.display_image_array)
@@ -261,12 +257,6 @@ class FiberGUI:
         save_stab(images, x, threshold)
 
     def update_frame_number(self, val):
-        if int(val) != val:
-            self.sliders['frame_number'].set_val(int(val))
-            return
-        if self._cooling_down():
-            return
-
         # t = perf_counter()
         self.load_frame()
         self.recalculate_vision()
@@ -274,21 +264,14 @@ class FiberGUI:
         # print('frame time:', perf_counter() - t)
 
     def update_edge(self, val):
-        if self._cooling_down():
-            return
 
         self.recalculate_vision()
         self.refresh_plot()
 
     def update_open_close(self, val):
-        if int(val) != val:
-            self.sliders['open_close'].set_val(int(val))
-            return
         self.update_edge(val)
 
     def update_hough(self, val):
-        if self._cooling_down():
-            return
         self.recalculate_vision()
         self.refresh_plot()
 

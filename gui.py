@@ -1,4 +1,5 @@
 from collections import OrderedDict
+import inspect
 from time import perf_counter
 
 import matplotlib.pyplot as plt
@@ -65,21 +66,24 @@ class MPLGUI:
             slider_kwargs['label'] = name
         ax = self.axes[name] = self.fig.add_axes(self.slider_coords)
         sl = self.sliders[name] = Slider(ax, **slider_kwargs)
-        callback = _force_cooldown(callback)
+        if isparameter:
+            self.register_parameter(name)
+        callback = _force_cooldown(callback, self)
         if forceint:
             callback = _force_int(callback, sl.set_val)
         sl.on_changed(callback)
         self.slider_coords[1] -= self.slider_coords[-1] * (5 / 3)
 
     def register_button(self, name, callback, coords, widget=Button, **button_kwargs):
-        if 'label' not in button_kwargs:
+        if ('label' not in button_kwargs and
+            'label' in inspect.signature(widget).parameters):
             button_kwargs['label'] = name
         ax = self.axes[name] = self.fig.add_axes(coords)
-        sl = self.sliders[name] = Slider(ax, **button_kwargs)
-        sl.on_changed(callback)
+        b = self.buttons[name] = widget(ax, **button_kwargs)
+        b.on_clicked(callback)
 
     def register_parameter(self, name):
-        self._parameter_sliders.append(self.sliders[name])
+        self._parameter_sliders.append(name)
 
     @property
     def parameters(self):

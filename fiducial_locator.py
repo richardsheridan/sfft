@@ -6,6 +6,7 @@ import itertools
 import numpy as np
 
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab
+from gui import MPLGUI
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, RadioButtons
 from multiprocessing import pool, freeze_support
