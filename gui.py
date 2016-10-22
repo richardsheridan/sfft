@@ -4,7 +4,7 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider
-
+from numbers import Integral as Int
 
 @property
 def NotImplementedAttribute(self):
@@ -14,22 +14,19 @@ def NotImplementedAttribute(self):
 def _force_cooldown(callback, cooling_object):
     def cooldown_wrapper(val):
         t = perf_counter()
-        if t - cooling_object.timestamp <= cooling_object.cooldown:
-            return
-        else:
+        if t - cooling_object.timestamp > cooling_object.cooldown:
             cooling_object.timestamp = t
-            return callback(val)
+            callback(val)
 
     return cooldown_wrapper
 
 
 def _force_int(callback, setter):
     def int_wrapper(val):
-        if int(val) != val:
+        if not isinstance(val, Int):
             setter(int(val))
-            return
-        val = int(val)
-        callback(val)
+        else:
+            callback(val)
 
     return int_wrapper
 
