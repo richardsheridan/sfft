@@ -59,8 +59,8 @@ class FidGUI(MPLGUI):
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
-                             valmax=3000,
-                             valinit=1000,
+                             valmax=100,
+                             valinit=50,
                              )
 #
 #        self.axes['frame_number'] = self.fig.add_axes(

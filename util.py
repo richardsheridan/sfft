@@ -87,6 +87,7 @@ def wavelet_filter(series, window_size, bandwidth=None):
         wide_window /= wide_window.sum()
         window_array = narrow_window - wide_window
 
+    window_array /= np.fabs(window_array).sum()
     smoothed = convolve(series, window_array, 'same')
     return smoothed
 

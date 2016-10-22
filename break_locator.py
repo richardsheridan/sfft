@@ -68,8 +68,8 @@ class BreakGUI(MPLGUI):
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
-                             valmax=400,
-                             valinit=100,
+                             valmax=100,
+                             valinit=50,
                              )
 #        self.axes['frame_number'] = self.fig.add_axes(
 #            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
