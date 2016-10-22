@@ -36,12 +36,13 @@ class MPLGUI:
 
     def __init__(self,block=True):
         self.fig = NotImplementedAttribute
+        self.slider_coords = NotImplementedAttribute
+
         self.axes = {}
         self.artists = {}
         self.buttons = {}
         self.sliders = {}
         self._parameter_sliders = []
-        self.slider_coords = NotImplementedAttribute
         self.timestamp = perf_counter()
 
         self.create_layout()
@@ -59,6 +60,7 @@ class MPLGUI:
     def register_slider(self, name, callback, isparameter=True, forceint=False, **slider_kwargs):
         if 'label' not in slider_kwargs:
             slider_kwargs['label'] = name
+
         ax = self.axes[name] = self.fig.add_axes(self.slider_coords)
 
         if 'valfmt' not in slider_kwargs:
@@ -66,12 +68,14 @@ class MPLGUI:
                 slider_kwargs['valfmt']='%d'
             else:
                 slider_kwargs['valfmt']='%.3g'
+
         sl = self.sliders[name] = Slider(ax, **slider_kwargs)
 
         if isparameter:
-            self.register_parameter(name)
+            self._register_parameter(name)
 
         callback = _force_cooldown(callback, self)
+
         if forceint:
             callback = _force_int(callback, sl.set_val)
 
@@ -82,11 +86,12 @@ class MPLGUI:
         if ('label' not in button_kwargs and
             'label' in inspect.signature(widget).parameters):
             button_kwargs['label'] = name
+
         ax = self.axes[name] = self.fig.add_axes(coords)
         b = self.buttons[name] = widget(ax, **button_kwargs)
         b.on_clicked(callback)
 
-    def register_parameter(self, name):
+    def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
     @property

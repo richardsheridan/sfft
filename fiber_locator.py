@@ -1,17 +1,15 @@
-import os
-from time import perf_counter
+from os import path
 from multiprocessing import pool, freeze_support
 
 import cv2
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Slider, Button, RadioButtons
+from matplotlib.widgets import RadioButtons
 
 from util import get_files, path_with_stab
 from gui import MPLGUI
 
-import cProfile as prof
 
 _map = itertools.starmap
 
@@ -30,27 +28,11 @@ class FiberGUI(MPLGUI):
     def create_layout(self):
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
         self.fig.subplots_adjust(left=0.1, bottom=0.5)
-        self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
 
-        # self.axes['colorbar'] = self.fig.add_axes([.25,.95,.5,.03])
-#        self.axes['display'] = self.fig.add_axes([.3, .95, .2, .03])
-#        self.buttons['display'] = Button(self.axes['display'], 'Display full')
-#        self.buttons['display'].on_clicked(self.display_external)
+        self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
-#        self.axes['save'] = self.fig.add_axes([.3, .90, .2, .03])
-#        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
-#        self.buttons['save'].on_clicked(self.execute_batch)
         self.register_button('type', self.display_type, [.6, .9, .2, .1], widget=RadioButtons, labels=('original', 'edges', 'rotated'))
-#        self.axes['type'] = self.fig.add_axes([.6, .9, .2, .1])
-#        self.buttons['type'] = RadioButtons(self.axes['type'], ('original', 'edges', 'rotated'))
-#        self.buttons['type'].on_clicked(self.display_type)
-        # self.artists['image'] = self.axes['image'].imshow([[0,0],[0,0]],cmap='gray')
-#
-#        slider_width = .55
-#        slider_height = .03
-#        slider_x_coordinate = .3
-#        slider_y_step = .05
-#        slider_y_coord = .40
+
         self.slider_coords =[.3, .4, .55, .03 ]
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
@@ -65,51 +47,6 @@ class FiberGUI(MPLGUI):
                              valmax=2 ** 9 - 1,
                              valinit=70,
                              )
-#        self.axes['frame_number'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        self.axes['threshold'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-        # self.axes['edge2'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        # self.axes['open_close'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        # self.axes['hough_rho'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        # self.axes['hough_theta'] = self.fig.add_axes([slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        # self.axes['hough_min_theta'] = self.fig.add_axes(
-        #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        # self.axes['hough_max_theta'] = self.fig.add_axes(
-        #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-
-#        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame number',
-#                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
-#        self.sliders['threshold'] = Slider(self.axes['threshold'], 'edge threshold',
-#                                           valmin=0, valmax=2 ** 9 - 1, valinit=70, valfmt='%d')
-        # self.sliders['edge2'] = Slider(self.axes['edge2'], 'edge threshold_n',
-        #                                valmin=0, valmax=2**9, valinit=70, valfmt='%d')
-        # self.sliders['open_close'] = Slider(self.axes['open_close'], 'Open/Close cycles',
-        #                                     valmin=0, valmax=3, valinit=1, valfmt='%d')
-        # self.sliders['hough_rho'] = Slider(self.axes['hough_rho'], 'Hough rho',
-        #                                    valmin=10, valmax=255, valinit=50, valfmt='%d')
-        # self.sliders['hough_theta'] = Slider(self.axes['hough_theta'], 'Hough theta',
-        #                                      valmin=.001, valmax=.05, valinit=.01, valfmt='%.3g')
-        # self.sliders['hough_min_theta'] = Slider(self.axes['hough_min_theta'], 'Hough min_theta',
-        #                                          valmin=-.1, valmax=.1, valinit=-.1, valfmt='%.3g')
-        # self.sliders['hough_max_theta'] = Slider(self.axes['hough_max_theta'], 'Hough max_theta',
-        #                                          valmin=-.1, valmax=.1, valinit=.1, valfmt='%.3g')
-
-#        self.sliders['frame_number'].on_changed(self.update_frame_number)
-        # self.sliders['open_close'].on_changed(self.update_open_close)
-#        self.sliders['threshold'].on_changed(self.update_edge)
-        # self.sliders['edge2'].on_changed(self.update_edge)
-        # self.sliders['hough_rho'].on_changed(self.update_hough)
-        # self.sliders['hough_theta'].on_changed(self.update_hough)
-        # self.sliders['hough_min_theta'].on_changed(self.update_hough)
-        # self.sliders['hough_max_theta'].on_changed(self.update_hough)
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
@@ -123,25 +60,8 @@ class FiberGUI(MPLGUI):
         threshold = self.sliders['threshold'].val
         self.edges = sobel_edges(self.tdi_array, threshold)
 
-        # dx = cv2.Sobel(self.tdi_array,cv2.CV_16S,1,0,7)
-        # self.edges_with_lines = np.arctan(dy/dx)
-        # self.edges = cv2.Laplacian(self.tdi_array,cv2.CV_16S)
-
-        # self.edges = cv2.Canny(self.tdi_array,
-        #                        threshold,
-        #                        threshold_n,
-        #                        apertureSize=3,
-        #                        L2gradient=True,
-        #                        )
-
     def recalculate_lines(self):
         processed_image_array = self.edges
-
-        # slope, intercept, theta = fit_line_hough(processed_image_array,
-        #                                  self.sliders['hough_rho'].val,
-        #                                  self.sliders['hough_theta'].val,
-        #                                  self.sliders['hough_max_theta'].val,
-        #                                  self.sliders['hough_min_theta'].val,)
 
         self.slope, self.intercept, self.theta = fit_line_moments(processed_image_array)
 
@@ -151,17 +71,6 @@ class FiberGUI(MPLGUI):
 
     def draw_line(self, image_array, color=255, thickness=4):
         x_size = image_array.shape[1]
-        # t = perf_counter()
-        # x = x_size - 1
-        # y = x * self.slope + self.intercept
-        # a = cv2.line(image_array,
-        #                 (0, int(self.intercept)),
-        #                 (int(x), int(y)),
-        #                 color,
-        #                 thickness,
-        #                 )
-        # print('old line draw time:',perf_counter()-t)
-        # t= perf_counter()
         max_chunk = 2 ** 14
         chunks = x_size // max_chunk
         image_parts = []
@@ -191,16 +100,11 @@ class FiberGUI(MPLGUI):
 
         output = np.hstack(image_parts)
 
-        # print('new line draw time:',perf_counter()-t)
         return output
 
     def refresh_plot(self):
         self.axes['image'].clear()
-        # self.axes['colorbar'].clear()
 
-        # self.artists['image'].set_array(np.random.rand(2,2)) ## doesn't work to update the image?!?!?
-        # axesimage = self.axes['image'].imshow((self.edges_with_lines),cmap='Spectral')
-        # self.cb = self.fig.colorbar(axesimage,cax=self.axes['colorbar'],orientation='horizontal')
         if self.display_original:
             image = self.tdi_array.copy()
             if self.display_rotated:
@@ -221,7 +125,6 @@ class FiberGUI(MPLGUI):
         cv2.imshow('display_external', self.display_image_array)
         key = cv2.waitKey(0)
         cv2.destroyAllWindows()
-        # self.processed_image.show('processed image')
 
     def display_type(self, label):
         ('original', 'edges', 'rotated')
@@ -240,12 +143,6 @@ class FiberGUI(MPLGUI):
 
         self.refresh_plot()
 
-#    @property
-#    def parameters(self):
-#        from collections import OrderedDict
-#        return OrderedDict((('threshold', self.sliders['threshold'].val),
-#                            ))
-
     def execute_batch(self, event):
         threshold, = self.parameters.values()
         return_image = False
@@ -255,11 +152,9 @@ class FiberGUI(MPLGUI):
         save_stab(images, x, threshold)
 
     def update_frame_number(self, val):
-        # t = perf_counter()
         self.load_frame()
         self.recalculate_vision()
         self.refresh_plot()
-        # print('frame time:', perf_counter() - t)
 
     def update_edge(self, val):
 
@@ -269,32 +164,6 @@ class FiberGUI(MPLGUI):
     def update_open_close(self, val):
         self.update_edge(val)
 
-    def update_hough(self, val):
-        self.recalculate_vision()
-        self.refresh_plot()
-
-
-def _draw_hough_line(rho, theta, array):
-    if theta == 0:
-        return array
-    # a = np.cos(theta)
-    # b = np.sin(theta)
-    # x0 = a * rho
-    # y0 = b * rho
-    # x1 = int(x0 + 1000 * (-b))
-    # y1 = int(y0 + 1000 * (a))
-    # x2 = int(x0 - 1000 * (-b))
-    # y2 = int(y0 - 1000 * (a))
-    x1 = 0
-    ymax, x2 = np.array(array.shape) - 1
-    y1 = int(_cartesian_from_polar(rho, theta, x1))
-    y2 = int(_cartesian_from_polar(rho, theta, x2))
-    # retval, (x1,y1), (x2,y2) = cv2.clipLine((0,0,x2,ymax),(x1,y1),(x2,y2)) # line drawer clips for you
-    return cv2.line(array, (x1, y1), (x2, y2), 255)
-
-
-def _cartesian_from_polar(rho, theta, x):
-    return (rho - x * np.cos(theta)) / np.sin(theta)
 
 
 def _si_from_ct(centroid, theta):
@@ -327,47 +196,6 @@ def _load_tdi_corrected(image_path, downsample=None):
     return tdi_array
 
 
-def fit_line_hough(processed_image_array, delta_rho, delta_theta, max_theta, min_theta, threshold=3):
-    """
-    use argmax of Hough transform to choose best line in image
-    seems to be expensive and not robust
-
-    :param processed_image_array:
-    :param delta_rho:
-    :param delta_theta:
-    :param max_theta:
-    :param min_theta:
-    :param threshold:
-    :return slope, intercept, theta:
-    """
-    t0 = perf_counter()
-    assert 0 < delta_rho
-    assert 0 < delta_theta
-
-    if delta_rho * delta_theta < .005:
-        print('this will take too long,bailing')
-        return
-
-    min_theta = min(min_theta, max_theta)
-
-    lines = cv2.HoughLines(processed_image_array, delta_rho, delta_theta, threshold, min_theta=min_theta + np.pi / 2,
-                           max_theta=max_theta + np.pi / 2, )
-
-    if lines is None:
-        print('no lines')
-        return processed_image_array.shape[0] // 2, 0
-
-    rho, theta = lines[0].ravel()
-    intercept = rho / np.sin(theta)
-    theta -= np.pi / 2
-    slope = np.tan(theta)
-
-    t1 = perf_counter()
-    # print('hough time:', t1 - t0)
-
-    return slope, intercept, theta
-
-
 def fit_line_moments(processed_image_array):
     """
     Use moments to generate whole-image centroid and angle
@@ -398,35 +226,17 @@ def fit_line_fitline(processed_image_array):
     :param processed_image_array:
     :return slope, intercept, theta:
     """
-    t0 = perf_counter()
     points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
     line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
     centroid = line[2:]
     theta = np.arctan2(line[1], line[0])
-    t1 = perf_counter()
-    # print('fitline time:', t1 - t0)
     slope, intercept = _si_from_ct(centroid, theta)
     return slope, intercept, theta
 
 
 def sobel_edges(image_array, threshold):
-    # ksize = 3
-    # dy = cv2.Sobel(image_array, -1, 0, 1, ksize=ksize, scale=2**-(ksize*2-4))
-    # retval,edges = cv2.threshold(dy, threshold, 255, cv2.THRESH_BINARY)
-
     dy = cv2.Sobel(image_array, cv2.CV_16S, 0, 1, ksize=3)
     edges = (dy > threshold).view('uint8')
-    # positive_dy = dy > threshold
-    # negative_dy = dy < -threshold_n
-    # edges = np.logical_or(positive_dy, negative_dy).view('uint8')
-
-    # retval,positive_dy = cv2.threshold(dy, threshold, 255, cv2.THRESH_TOZERO)
-    # retval,negative_dy = cv2.threshold(dy, -threshold_n, 255, cv2.THRESH_TOZERO_INV)
-
-    # positive_dy = cv2.adaptiveThreshold(dy,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,11,threshold)
-    # negative_dy = cv2.adaptiveThreshold(-dy,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY,11,threshold_n)
-
-    # if iterations:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
     edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
@@ -435,7 +245,6 @@ def sobel_edges(image_array, threshold):
 
 
 def rotate_fiber(image, vshift, theta):
-    # t = perf_counter()
     y_size, x_size = image.shape
     mean = int(image.mean())
     translation = np.float32([[1, 0, 0], [0, 1, vshift]])
@@ -466,7 +275,6 @@ def rotate_fiber(image, vshift, theta):
     cv2.warpAffine(image[:, patchslice], transform, (patchwidth, y_size), dst=output[:, patchslice],
                    borderMode=cv2.BORDER_TRANSPARENT, borderValue=mean)
 
-    # print('rotate time: ', perf_counter()-t)
     return output
 
 
@@ -490,8 +298,8 @@ def batch_stabilize(image_paths, *args):
 
 
 def load_stab_data(stabilized_image_path):
-    dirname, basename = os.path.split(stabilized_image_path)
-    datfile = os.path.join(dirname, STABILIZE_FILENAME)
+    dirname, basename = path.split(stabilized_image_path)
+    datfile = path.join(dirname, STABILIZE_FILENAME)
 
     import json
     with open(datfile) as fp:
@@ -505,7 +313,7 @@ def load_stab_data(stabilized_image_path):
 
 def load_stab_tif(image_path, *stabilize_args):
     stabilized_image_path = path_with_stab(image_path)
-    if os.path.exists(stabilized_image_path):
+    if path.exists(stabilized_image_path):
         image = cv2.imread(stabilized_image_path, cv2.IMREAD_UNCHANGED)
         # vshift, theta = load_stab_data(stabilized_image_path)
     else:
@@ -514,7 +322,7 @@ def load_stab_tif(image_path, *stabilize_args):
 
 
 def stabilize_file(image_path, threshold, return_image=False, save_image=False):
-    dir, fname = os.path.split(image_path)
+    dir, fname = path.split(image_path)
     print('Loading:', fname)
     image = _load_tdi_corrected(image_path)
     edges = sobel_edges(image, threshold)
@@ -524,17 +332,17 @@ def stabilize_file(image_path, threshold, return_image=False, save_image=False):
         image = rotate_fiber(image, vshift, theta)
     if save_image:
         print('Saving: STAB_' + fname)
-        cv2.imwrite(os.path.join(dir, "STAB_" + fname), image)
+        cv2.imwrite(path.join(dir, "STAB_" + fname), image)
     if return_image:
         return image
     return vshift, theta
 
 
 def save_stab(image_paths, batch, threshold):
-    data = {os.path.basename(image_path).lower(): (vshift, theta)
+    data = {path.basename(image_path).lower(): (vshift, theta)
             for image_path, (vshift, theta) in zip(image_paths, batch)}
     for image_path, (vshift, theta) in zip(image_paths, batch):
-        dname, fname = os.path.split(image_path)
+        dname, fname = path.split(image_path)
         data[fname] = vshift, theta
 
     header = {'threshold': threshold,
@@ -543,7 +351,7 @@ def save_stab(image_paths, batch, threshold):
 
     output = [header, data]
     from util import dump
-    stab_path = os.path.join(dname, STABILIZE_FILENAME)
+    stab_path = path.join(dname, STABILIZE_FILENAME)
     print('Parameters and shifts stored in:')
     print(stab_path)
     with open(stab_path, 'w') as fp:

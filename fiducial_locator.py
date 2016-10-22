@@ -1,5 +1,4 @@
-from time import perf_counter
-import os.path as path
+from os import path
 
 import cv2
 import itertools
@@ -8,7 +7,7 @@ import numpy as np
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab
 from gui import MPLGUI
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, RadioButtons
+from matplotlib.widgets import RadioButtons
 from multiprocessing import pool, freeze_support
 
 _map = itertools.starmap
@@ -17,7 +16,7 @@ FIDUCIAL_FILENAME = 'fiducials.json'
 
 
 class FidGUI(MPLGUI):
-    def __init__(self, images, stabilize_args=(), ):
+    def __init__(self, images, stabilize_args=()):
         self.images = images
         self.stabilize_args = stabilize_args
 
@@ -31,14 +30,6 @@ class FidGUI(MPLGUI):
 
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
-#        self.axes['save'] = self.fig.add_axes([.4, .95, .2, .03])
-#        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
-#        self.buttons['save'].on_clicked(self.execute_batch)
-#
-#        slider_width = .55
-#        slider_height = .03
-#        slider_x_coordinate = .3
-#        slider_y_coord = .20
         self.slider_coords = [.3, .20, .55, .03]
 
         self.register_slider('frame_number',self.update_frame_number,
@@ -62,33 +53,6 @@ class FidGUI(MPLGUI):
                              valmax=100,
                              valinit=50,
                              )
-#
-#        self.axes['frame_number'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        # self.axes['slice_width'] = self.fig.add_axes(
-#        #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        # slider_y_coord -= slider_y_step
-#        self.axes['filter_width'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        self.axes['cutoff'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#
-#        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame Number',
-#                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
-#        # self.sliders['slice_width'] = Slider(self.axes['slice_width'], 'Slice Width',
-#        #                                       valmin=0, valmax=400, valinit=200, valfmt='%d')
-#        self.sliders['filter_width'] = Slider(self.axes['filter_width'], 'Filter Width',
-#                                              valmin=0, valmax=12000, valinit=4000, valfmt='%d')
-#        self.sliders['cutoff'] = Slider(self.axes['cutoff'], 'Amplitude Cutoff',
-#                                        valmin=0, valmax=3000, valinit=1000, valfmt='%.4g')
-#
-#        self.sliders['frame_number'].on_changed(self.update_frame_number)
-#        # self.sliders['slice_width'].on_changed(self.update_slice_width)
-#        self.sliders['filter_width'].on_changed(self.update_filter_width)
-#        self.sliders['cutoff'].on_changed(self.update_cutoff)
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
@@ -105,7 +69,6 @@ class FidGUI(MPLGUI):
         self.recalculate_locations()
 
     def recalculate_profile(self):
-        # width = self.sliders['slice_width'].val
         self.profile = fid_profile_from_image(self.image)
 
     def recalculate_locations(self):
@@ -122,7 +85,6 @@ class FidGUI(MPLGUI):
 
     def refresh_plot(self):
         self.artists['fids'].set_xdata(self.locations / len(self.profile) * 800)
-        # self.artists['fids'].set_ydata(np.full_like(self.locations,self.image.shape[0]//2))
 
         self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
         self.artists['profile'].set_ydata(self.filtered_profile)
@@ -131,26 +93,8 @@ class FidGUI(MPLGUI):
 
         self.axes['profile'].relim()
         self.axes['profile'].autoscale_view()
-        # axesimage = self.axes['image'].imshow((self.edges_with_lines),cmap='Spectral')
-        # self.cb = self.fig.colorbar(axesimage,cax=self.axes['colorbar'],orientation='horizontal')
 
         self.fig.canvas.draw()
-#
-#    def _cooling_down(self):
-#        t = perf_counter()
-#        if t - self.t <= self.cooldown:
-#            return True
-#        else:
-#            self.t = t
-#            return False
-
-#    @property
-#    def parameters(self):
-#        from collections import OrderedDict
-#        return OrderedDict((('filter_width', self.sliders['filter_width'].val),
-#                            ('cutoff', self.sliders['cutoff'].val),
-#                            ('stabilize_args', tuple(self.stabilize_args)),
-#                            ))
 
     def execute_batch(self, event=None):
         parameters = self.parameters
@@ -163,23 +107,9 @@ class FidGUI(MPLGUI):
             save_fids(parameters, self.images, left_fid, right_fid)
 
     def update_frame_number(self, val):
-
-        # t = perf_counter()
         self.load_frame()
         self.recalculate_vision()
         self.refresh_plot()
-        # print('frame time:', perf_counter() - t)
-
-    # def update_slice_width(self, val):
-    #     if int(val) != val:
-    #         self.sliders['slice_width'].set_val(int(val))
-    #         return
-    #     val = int(val)
-    #     if self._cooling_down():
-    #         return
-    #
-    #     self.recalculate_breaks()
-    #     self.refresh_plot()
 
     def update_filter_width(self, val):
 
@@ -204,7 +134,8 @@ def fid_profile_from_image(image):
 def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
     if filtered_profile is None:
         # WTF is this? I needed a way to get the filtered profile out for the GUI
-        # without making other workflows more complicated
+        # without making other workflows more complicated. So we only make a
+        # new array when we know we don't have one to mutate from elsewhere.
         filtered_profile = np.empty_like(fid_profile, float)
     filtered_profile[:] = wavelet_filter(fid_profile, fid_window)
 

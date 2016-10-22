@@ -1,15 +1,11 @@
 import json
-from collections import OrderedDict
 from itertools import starmap as _map, repeat
 from multiprocessing import freeze_support, pool
-from numbers import Integral as Int
 from os import path
-from time import perf_counter
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import Slider, Button
 
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab
 from gui import MPLGUI
@@ -18,7 +14,7 @@ BREAK_FILENAME = 'breaks.json'
 
 
 class BreakGUI(MPLGUI):
-    def __init__(self, images, stabilize_args=(), fid_args=(), block=True, ):
+    def __init__(self, images, stabilize_args=(), fid_args=()):
         self.images = images
         self.stabilize_args = stabilize_args
         self.fid_args = fid_args
@@ -32,15 +28,6 @@ class BreakGUI(MPLGUI):
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
-#        self.axes['save'] = self.fig.add_axes([.4, .95, .2, .03])
-#        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
-#        self.buttons['save'].on_clicked(self.execute_batch)
-
-#        slider_width = .55
-#        slider_height = .03
-#        slider_x_coordinate = .3
-#        slider_y_step = .05
-#        slider_y_coord = .20
         self.slider_coords = [.3, .20, .55, .03]
 
         self.register_slider('frame_number',self.update_frame_number,
@@ -71,32 +58,6 @@ class BreakGUI(MPLGUI):
                              valmax=100,
                              valinit=50,
                              )
-#        self.axes['frame_number'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        self.axes['slice_width'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        self.axes['filter_width'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#        self.axes['cutoff'] = self.fig.add_axes(
-#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-#        slider_y_coord -= slider_y_step
-#
-#        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame Number',
-#                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
-#        self.sliders['slice_width'] = Slider(self.axes['slice_width'], 'Slice Width',
-#                                             valmin=0, valmax=400, valinit=200, valfmt='%d')
-#        self.sliders['filter_width'] = Slider(self.axes['filter_width'], 'Filter Width',
-#                                              valmin=0, valmax=800, valinit=400, valfmt='%d')
-#        self.sliders['cutoff'] = Slider(self.axes['cutoff'], 'Amplitude Cutoff',
-#                                        valmin=0, valmax=400, valinit=100, valfmt='%.4g')
-#
-#        self.sliders['frame_number'].on_changed(self.update_frame_number)
-#        self.sliders['slice_width'].on_changed(self.update_slice_width)
-#        self.sliders['filter_width'].on_changed(self.update_filter_width)
-#        self.sliders['cutoff'].on_changed(self.update_cutoff)
 
     def load_frame(self):
         from fiber_locator import load_stab_tif
@@ -118,7 +79,6 @@ class BreakGUI(MPLGUI):
         self.recalculate_locations()
 
     def recalculate_profile(self):
-        # width = self.sliders['slice_width'].val
         self.profile = break_profile_from_image(self.image, self.sliders['slice_width'].val)
 
     def recalculate_locations(self):
@@ -141,28 +101,8 @@ class BreakGUI(MPLGUI):
 
         self.axes['profile'].relim()
         self.axes['profile'].autoscale_view()
-        # axesimage = self.axes['image'].imshow((self.edges_with_lines),cmap='Spectral')
-        # self.cb = self.fig.colorbar(axesimage,cax=self.axes['colorbar'],orientation='horizontal')
 
         self.fig.canvas.draw()
-
-#    def _cooling_down(self):
-#        t = perf_counter()
-#        if t - self.t <= self.cooldown:
-#            return True
-#        else:
-#            self.t = t
-#            return False
-#
-#    @property
-#    def parameters(self):
-#        return OrderedDict((('slice_width', self.sliders['slice_width'].val),
-#                            ('filter_width', self.sliders['filter_width'].val),
-#                            ('cutoff', self.sliders['cutoff'].val),
-#                            ('fid_args', tuple(self.fid_args)),
-#                            ('stabilize_args', tuple(self.stabilize_args)),
-#                            )
-#                           )
 
     def execute_batch(self, event=None):
         parameters = self.parameters
@@ -174,11 +114,9 @@ class BreakGUI(MPLGUI):
             save_breaks(parameters, breaks, self.images)
 
     def update_frame_number(self, val):
-        # t = perf_counter()
         self.load_frame()
         self.recalculate_vision()
         self.refresh_plot()
-        # print('frame time:', perf_counter() - t)
 
     def update_slice_width(self, val):
         self.recalculate_vision()
@@ -211,23 +149,6 @@ def choose_breaks(break_filtered, break_amp, left_limit, right_limit):
     break_peaks = find_crossings(np.gradient(break_filtered))
     break_peaks[:left_limit] = False
     break_peaks[right_limit:] = False
-
-    # plt.subplot(211)
-    # a = break_profile[3000:-3000]
-    # b = break_filtered[3000:-3000]
-    # plt.plot(a / a.max() * b.max(), 'b', b, 'r', np.full_like(a, break_amp), ':k')
-    # # plt.axis('tight')
-    # plt.subplot(212)
-    # # derp = cwt(break_profile[3000:-3000],ricker,np.linspace(100,300,20,0))
-    # # print()
-    # # plt.imshow(derp,cmap='viridis',aspect='auto')
-    # # plt.show(1)
-    # bp_amps = break_filtered[break_peaks]
-    # # bp_amps /= bp_amps.std()
-    # (osm, osr), (slope, intercept, r) = stats.probplot(bp_amps, fit=True)
-    # plt.plot(osr, 'bo', np.full_like(osm, break_amp), ':k')
-    # plt.axis('tight')
-    # plt.show(1)
 
     break_peaks &= (break_filtered >= break_amp)
 
@@ -291,7 +212,7 @@ def load_breaks(directory):
 
 if __name__ == '__main__':
 
-    a = BreakGUI(get_files(), )  # (97.798295454545467, 248.48011363636365, 1), (7000, 1000))
+    a = BreakGUI(get_files(), )
 
     # import cProfile, pstats, io
     # prof = cProfile.Profile()

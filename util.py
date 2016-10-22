@@ -1,5 +1,4 @@
 import sys, os, json
-from time import perf_counter
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename, asksaveasfilename
 import numpy as np
@@ -87,7 +86,7 @@ def wavelet_filter(series, window_size, bandwidth=None):
         wide_window /= wide_window.sum()
         window_array = narrow_window - wide_window
 
-    window_array /= np.fabs(window_array).sum()
+    window_array /= np.abs(window_array).sum()
     smoothed = convolve(series, window_array, 'same')
     return smoothed
 
