@@ -16,73 +16,79 @@ _map = itertools.starmap
 FIDUCIAL_FILENAME = 'fiducials.json'
 
 
-class FidGUI:
-    def __init__(self, images, stabilize_args=(), block=True, ):
+class FidGUI(MPLGUI):
+    def __init__(self, images, stabilize_args=(), ):
         self.images = images
         self.stabilize_args = stabilize_args
-        self.axes = {}
-        self.artists = {}
-        self.buttons = {}
-        self.sliders = {}
-        self.t = perf_counter()
-        self.cooldown = .1
-        self.lines = 1
 
-        self.create_layout()
-        self.load_frame()
-        self.recalculate_fids()
-        self.refresh_plot()
-        # for k, v in stabilize_args.items():
-        #     self.sliders[k].set_val(v)
-
-        if block:
-            plt.ioff()
-        else:
-            plt.ion()
-
-        plt.show()
+        super().__init__()
 
     def create_layout(self):
         self.fig, (self.axes['image'], self.axes['profile']) = plt.subplots(2, 1, figsize=(8, 10))
         self.fig.subplots_adjust(left=0.1, bottom=0.3)
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.axes['save'] = self.fig.add_axes([.4, .95, .2, .03])
-        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
-        self.buttons['save'].on_clicked(self.execute_batch)
 
-        slider_width = .55
-        slider_height = .03
-        slider_x_coordinate = .3
-        slider_y_step = .05
-        slider_y_coord = .20
+        self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
-        self.axes['frame_number'] = self.fig.add_axes(
-            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        slider_y_coord -= slider_y_step
-        # self.axes['slice_width'] = self.fig.add_axes(
-        #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        # slider_y_coord -= slider_y_step
-        self.axes['filter_width'] = self.fig.add_axes(
-            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        slider_y_coord -= slider_y_step
-        self.axes['cutoff'] = self.fig.add_axes(
-            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
-        slider_y_coord -= slider_y_step
+#        self.axes['save'] = self.fig.add_axes([.4, .95, .2, .03])
+#        self.buttons['save'] = Button(self.axes['save'], 'Save batch')
+#        self.buttons['save'].on_clicked(self.execute_batch)
+#
+#        slider_width = .55
+#        slider_height = .03
+#        slider_x_coordinate = .3
+#        slider_y_coord = .20
+        self.slider_coords = [.3, .20, .55, .03]
 
-        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame Number',
-                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
-        # self.sliders['slice_width'] = Slider(self.axes['slice_width'], 'Slice Width',
-        #                                       valmin=0, valmax=400, valinit=200, valfmt='%d')
-        self.sliders['filter_width'] = Slider(self.axes['filter_width'], 'Filter Width',
-                                              valmin=0, valmax=12000, valinit=4000, valfmt='%d')
-        self.sliders['cutoff'] = Slider(self.axes['cutoff'], 'Amplitude Cutoff',
-                                        valmin=0, valmax=3000, valinit=1000, valfmt='%.4g')
-
-        self.sliders['frame_number'].on_changed(self.update_frame_number)
-        # self.sliders['slice_width'].on_changed(self.update_slice_width)
-        self.sliders['filter_width'].on_changed(self.update_filter_width)
-        self.sliders['cutoff'].on_changed(self.update_cutoff)
+        self.register_slider('frame_number',self.update_frame_number,
+                             isparameter=False,
+                             forceint=True,
+                             label='Frame Number',
+                             valmin=0,
+                             valmax=len(self.images) - 1,
+                             valinit=0,
+                             )
+        self.register_slider('filter_width', self.update_filter_width,
+                             forceint=True,
+                             label='Filter Width',
+                             valmin=0,
+                             valmax=12000,
+                             valinit=4000,
+                             )
+        self.register_slider('cutoff', self.update_cutoff,
+                             label='Amplitude Cutoff',
+                             valmin=0,
+                             valmax=3000,
+                             valinit=1000,
+                             )
+#
+#        self.axes['frame_number'] = self.fig.add_axes(
+#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        slider_y_coord -= slider_y_step
+#        # self.axes['slice_width'] = self.fig.add_axes(
+#        #     [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        # slider_y_coord -= slider_y_step
+#        self.axes['filter_width'] = self.fig.add_axes(
+#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        slider_y_coord -= slider_y_step
+#        self.axes['cutoff'] = self.fig.add_axes(
+#            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
+#        slider_y_coord -= slider_y_step
+#
+#        self.sliders['frame_number'] = Slider(self.axes['frame_number'], 'Frame Number',
+#                                              valmin=0, valmax=len(self.images) - 1, valinit=0, valfmt='%d')
+#        # self.sliders['slice_width'] = Slider(self.axes['slice_width'], 'Slice Width',
+#        #                                       valmin=0, valmax=400, valinit=200, valfmt='%d')
+#        self.sliders['filter_width'] = Slider(self.axes['filter_width'], 'Filter Width',
+#                                              valmin=0, valmax=12000, valinit=4000, valfmt='%d')
+#        self.sliders['cutoff'] = Slider(self.axes['cutoff'], 'Amplitude Cutoff',
+#                                        valmin=0, valmax=3000, valinit=1000, valfmt='%.4g')
+#
+#        self.sliders['frame_number'].on_changed(self.update_frame_number)
+#        # self.sliders['slice_width'].on_changed(self.update_slice_width)
+#        self.sliders['filter_width'].on_changed(self.update_filter_width)
+#        self.sliders['cutoff'].on_changed(self.update_cutoff)
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
@@ -94,7 +100,7 @@ class FidGUI:
         self.artists['fids'] = ax.plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
         ax.autoscale_view(tight=True)
 
-    def recalculate_fids(self):
+    def recalculate_vision(self):
         self.recalculate_profile()
         self.recalculate_locations()
 
@@ -129,22 +135,22 @@ class FidGUI:
         # self.cb = self.fig.colorbar(axesimage,cax=self.axes['colorbar'],orientation='horizontal')
 
         self.fig.canvas.draw()
+#
+#    def _cooling_down(self):
+#        t = perf_counter()
+#        if t - self.t <= self.cooldown:
+#            return True
+#        else:
+#            self.t = t
+#            return False
 
-    def _cooling_down(self):
-        t = perf_counter()
-        if t - self.t <= self.cooldown:
-            return True
-        else:
-            self.t = t
-            return False
-
-    @property
-    def parameters(self):
-        from collections import OrderedDict
-        return OrderedDict((('filter_width', self.sliders['filter_width'].val),
-                            ('cutoff', self.sliders['cutoff'].val),
-                            ('stabilize_args', tuple(self.stabilize_args)),
-                            ))
+#    @property
+#    def parameters(self):
+#        from collections import OrderedDict
+#        return OrderedDict((('filter_width', self.sliders['filter_width'].val),
+#                            ('cutoff', self.sliders['cutoff'].val),
+#                            ('stabilize_args', tuple(self.stabilize_args)),
+#                            ))
 
     def execute_batch(self, event=None):
         parameters = self.parameters
@@ -157,16 +163,10 @@ class FidGUI:
             save_fids(parameters, self.images, left_fid, right_fid)
 
     def update_frame_number(self, val):
-        if int(val) != val:
-            self.sliders['frame_number'].set_val(int(val))
-            return
-        val = int(val)
-        if self._cooling_down():
-            return
 
         # t = perf_counter()
         self.load_frame()
-        self.recalculate_fids()
+        self.recalculate_vision()
         self.refresh_plot()
         # print('frame time:', perf_counter() - t)
 
@@ -182,21 +182,13 @@ class FidGUI:
     #     self.refresh_plot()
 
     def update_filter_width(self, val):
-        if int(val) != val:
-            self.sliders['filter_width'].set_val(int(val))
-            return
-        val = int(val)
-        if self._cooling_down():
-            return
 
-        self.recalculate_fids()
+        self.recalculate_vision()
         self.refresh_plot()
 
     def update_cutoff(self, val):
-        if self._cooling_down():
-            return
 
-        self.recalculate_fids()
+        self.recalculate_vision()
         self.refresh_plot()
 
 

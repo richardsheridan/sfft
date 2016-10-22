@@ -37,7 +37,7 @@ def _force_int(callback, setter):
 class MPLGUI:
     cooldown = .1
 
-    def __init__(self):
+    def __init__(self,block=True):
         self.fig = NotImplementedAttribute
         self.axes = {}
         self.artists = {}
@@ -48,8 +48,6 @@ class MPLGUI:
         self.timestamp = perf_counter()
 
         self.create_layout()
-
-    def show(self, block=True):
         self.load_frame()
         self.recalculate_vision()
         self.refresh_plot()
@@ -65,12 +63,21 @@ class MPLGUI:
         if 'label' not in slider_kwargs:
             slider_kwargs['label'] = name
         ax = self.axes[name] = self.fig.add_axes(self.slider_coords)
+
+        if 'valfmt' not in slider_kwargs:
+            if forceint:
+                slider_kwargs['valfmt']='%d'
+            else:
+                slider_kwargs['valfmt']='%.3g'
         sl = self.sliders[name] = Slider(ax, **slider_kwargs)
+
         if isparameter:
             self.register_parameter(name)
+
         callback = _force_cooldown(callback, self)
         if forceint:
             callback = _force_int(callback, sl.set_val)
+
         sl.on_changed(callback)
         self.slider_coords[1] -= self.slider_coords[-1] * (5 / 3)
 

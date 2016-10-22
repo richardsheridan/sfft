@@ -24,9 +24,8 @@ class FiberGUI(MPLGUI):
         self.downsample = downsample
         self.display_original = True
         self.display_rotated = False
-        super().__init__()
 
-        self.show(block)
+        super().__init__()
 
     def create_layout(self):
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
@@ -52,21 +51,20 @@ class FiberGUI(MPLGUI):
 #        slider_x_coordinate = .3
 #        slider_y_step = .05
 #        slider_y_coord = .40
-        self.slider_coords = [.3, .4, .55, .03 ]
+        self.slider_coords =[.3, .4, .55, .03 ]
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
                              forceint=True,
                              label='Frame number',
                              valmin=0,
                              valmax=len(self.images) - 1,
-                             valinit=0,
-                             valfmt='%d')
+                             valinit=0,)
         self.register_slider('threshold',self.update_edge,
                              label='edge threshold',
                              valmin=0,
                              valmax=2 ** 9 - 1,
                              valinit=70,
-                             valfmt='%d')
+                             )
 #        self.axes['frame_number'] = self.fig.add_axes(
 #            [slider_x_coordinate, slider_y_coord, slider_width, slider_height])
 #        slider_y_coord -= slider_y_step
@@ -242,11 +240,11 @@ class FiberGUI(MPLGUI):
 
         self.refresh_plot()
 
-    @property
-    def parameters(self):
-        from collections import OrderedDict
-        return OrderedDict((('threshold', self.sliders['threshold'].val),
-                            ))
+#    @property
+#    def parameters(self):
+#        from collections import OrderedDict
+#        return OrderedDict((('threshold', self.sliders['threshold'].val),
+#                            ))
 
     def execute_batch(self, event):
         threshold, = self.parameters.values()
