@@ -10,12 +10,19 @@ from fiber_locator import FiberGUI
 from fiducial_locator import load_strain, FidGUI
 from util import parse_strain_dat, get_files
 
+radius_dict = {'pristine': 5.65,
+               'a1100': 5.65,
+               'a187': 5.65,
+               'old': 7.75,
+               'plant': 12.9,
+               'c9': 7.5,
+               }
 
 def choose_dataset():
     Tk().withdraw()
     folder = askdirectory(title='Choose dataset to analyze', mustexist=True)
     if not len(folder):
-        print('No files selected')
+        print('No data selected')
         import sys
         sys.exit()
     folder = path.normpath(folder)
@@ -25,7 +32,10 @@ def choose_dataset():
 
 def load_dataset(folder):
     matrix_stress, label = parse_strain_dat(folder)
-    print(label.strip())
+    label = label.strip().lower()
+    print(label)
+    label = label.split()[0]
+    fiber_radius = radius_dict[label]
 
     fid_strains, initial_displacement = load_strain(folder)
     breaks = load_breaks(folder)
@@ -38,7 +48,8 @@ def load_dataset(folder):
     avg_frag_len = initial_displacement / (break_count + 1)
 
     good_strains = np.hstack(((True,), (np.diff(fid_strains) > 0)))  # strip points with clutch slip
-    return break_count[good_strains], avg_frag_len[good_strains], fid_strains[good_strains], matrix_stress[good_strains]
+    return break_count[good_strains], avg_frag_len[good_strains], fid_strains[good_strains], matrix_stress[
+        good_strains], fiber_radius
 
 
 def calc_fiber_stress(strain, fiber_modulus, fiber_poisson=None, matrix_modulus=None, matrix_poisson=0.5):
@@ -83,9 +94,8 @@ if __name__ == '__main__':
     # folder = path.dirname(images[0])
     folder = choose_dataset()
     print(path.basename(folder))
-    break_count, avg_frag_len, strains, matrix_stress = load_dataset(folder)
-    fiber_modulus = 77000
-    fiber_radius = 5.65
+    break_count, avg_frag_len, strains, matrix_stress, fiber_radius = load_dataset(folder)
+    fiber_modulus = 80000
     fiber_stress = calc_fiber_stress(strains, fiber_modulus)
 
     K = .668
