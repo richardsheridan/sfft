@@ -5,6 +5,10 @@ import numpy as np
 # from numpy import convolve
 from scipy.signal import fftconvolve as convolve, ricker, gaussian
 
+STABILIZE_PREFIX = 'stab_'
+
+PIXEL_SIZE_X = .7953179315  # microns per pixel
+PIXEL_SIZE_Y = .347386919  # microns per pixel
 
 class NdarrayEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -36,8 +40,11 @@ def get_files():
     Tk().withdraw()
 
     # show an "Open" dialog box and return the paths to the selected files
-    fullpaths = askopenfilename(multiple=1, filetypes=(('TIF', '.tif'), ('All files', '*')))
-    fullpaths = [os.path.normpath(path) for path in sorted(fullpaths)]
+    fullpaths = askopenfilename(multiple=1, filetypes=(('Images', ('.tif', '.jpg', '.jpeg')),
+                                                       ('TIF', '.tif'),
+                                                       ('JPEG', ('.jpg', '.jpeg')),
+                                                       ('All files', '*')))
+    fullpaths = sorted(os.path.normpath(path.lower()) for path in fullpaths)
 
     if len(fullpaths):
         print('User opened:', *fullpaths, sep='\n')
@@ -105,15 +112,15 @@ def find_crossings(smooth_series, slope_cutoff=None):
 
 def path_with_stab(path):
     dirname, filename = os.path.split(path)
-    if filename.startswith('STAB_'):
+    if filename.lower().startswith(STABILIZE_PREFIX):
         return path
     else:
-        return os.path.join(dirname, 'STAB_' + filename)
+        return os.path.join(dirname, STABILIZE_PREFIX + filename)
 
 
 def basename_without_stab(images):
     name_gen = (os.path.basename(x).lower() for x in images)
-    return [x[len('stab_'):] if x.startswith('stab_') else x for x in name_gen]
+    return [x[len(STABILIZE_PREFIX):] if x.startswith(STABILIZE_PREFIX) else x for x in name_gen]
 
 
 def parse_strain_dat(straindatpath, max_cycle=None):

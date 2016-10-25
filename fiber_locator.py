@@ -7,14 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.widgets import RadioButtons
 
-from util import get_files, path_with_stab
+from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
 from gui import MPLGUI
 
 
 _map = itertools.starmap
 
 STABILIZE_FILENAME = 'stabilize.json'
-
 
 class FiberGUI(MPLGUI):
     def __init__(self, images, block=True, downsample=()):
@@ -179,14 +178,14 @@ def _vshift_from_si_shape(slope, intercept, shape):
 
 
 def _load_tdi_corrected(image_path, downsample=None):
-    tdi_array = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     if downsample and len(downsample) == 2 and downsample > (2, 2):
         x, y = downsample
     else:
         y, x = tdi_array.shape
-        # y = int(y * .43679)
-        x = int(x * 2.2894)
+        y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
+        # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
 
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
     tdi_array = clahe.apply(tdi_array)
@@ -254,28 +253,28 @@ def rotate_fiber(image, vshift, theta):
     # theta = np.atan(2*np.tan(theta))
     theta_deg = theta * 180 / np.pi
 
-    # rotation = cv2.getRotationMatrix2D((x_size, y_size), theta_deg, 1)
-    # transform = _compose(rotation, translation)
-    # return cv2.warpAffine(image, transform, (xc, yc), )
-
     rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
     transform = _compose(rotation, translation)
-    lefthalf = cv2.warpAffine(image[:, :x_size // 2], transform, (x_size // 2, y_size), borderValue=mean)
+    return cv2.warpAffine(image, transform, (x_size, y_size), borderValue=mean)
 
-    rotation = cv2.getRotationMatrix2D((0, y_size // 2), theta_deg, 1)
-    transform = _compose(rotation, translation)
-    righthalf = cv2.warpAffine(image[:, x_size // 2:], transform, (x_size // 2, y_size), borderValue=mean)
-
-    output = np.hstack((lefthalf, righthalf))
-
-    patchwidth = 10
-    patchslice = slice(x_size // 2 - patchwidth // 2, x_size // 2 + patchwidth // 2)
-    rotation = cv2.getRotationMatrix2D((patchwidth // 2, y_size // 2), theta_deg, 1)
-    transform = _compose(rotation, translation)
-    cv2.warpAffine(image[:, patchslice], transform, (patchwidth, y_size), dst=output[:, patchslice],
-                   borderMode=cv2.BORDER_TRANSPARENT, borderValue=mean)
-
-    return output
+    # rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
+    # transform = _compose(rotation, translation)
+    # lefthalf = cv2.warpAffine(image[:, :x_size // 2], transform, (x_size // 2, y_size), borderValue=mean)
+    #
+    # rotation = cv2.getRotationMatrix2D((0, y_size // 2), theta_deg, 1)
+    # transform = _compose(rotation, translation)
+    # righthalf = cv2.warpAffine(image[:, x_size // 2:], transform, (x_size // 2, y_size), borderValue=mean)
+    #
+    # output = np.hstack((lefthalf, righthalf))
+    #
+    # patchwidth = 10
+    # patchslice = slice(x_size // 2 - patchwidth // 2, x_size // 2 + patchwidth // 2)
+    # rotation = cv2.getRotationMatrix2D((patchwidth // 2, y_size // 2), theta_deg, 1)
+    # transform = _compose(rotation, translation)
+    # cv2.warpAffine(image[:, patchslice], transform, (patchwidth, y_size), dst=output[:, patchslice],
+    #                borderMode=cv2.BORDER_TRANSPARENT, borderValue=mean)
+    #
+    # return output
 
 
 def _compose(a, b):
@@ -306,15 +305,15 @@ def load_stab_data(stabilized_image_path):
         header, data = json.load(fp)
 
     key = basename.lower()
-    if key.startswith('stab_'):
-        key = key[len('stab_'):]
+    if key.startswith(STABILIZE_PREFIX):
+        key = key[len(STABILIZE_PREFIX):]
     return data[key]
 
 
 def load_stab_tif(image_path, *stabilize_args):
     stabilized_image_path = path_with_stab(image_path)
     if path.exists(stabilized_image_path):
-        image = cv2.imread(stabilized_image_path, cv2.IMREAD_UNCHANGED)
+        image = cv2.imread(stabilized_image_path, cv2.IMREAD_GRAYSCALE)
         # vshift, theta = load_stab_data(stabilized_image_path)
     else:
         image = stabilize_file(image_path, *stabilize_args, return_image=True)
@@ -331,8 +330,9 @@ def stabilize_file(image_path, threshold, return_image=False, save_image=False):
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta)
     if save_image:
-        print('Saving: STAB_' + fname)
-        cv2.imwrite(path.join(dir, "STAB_" + fname), image)
+        savename = STABILIZE_PREFIX + path.splitext(fname)[0] + '.jpg'
+        print('Saving: ' + savename)
+        cv2.imwrite(path.join(dir, savename), image)
     if return_image:
         return image
     return vshift, theta

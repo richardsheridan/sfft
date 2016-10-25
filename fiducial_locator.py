@@ -4,7 +4,7 @@ import cv2
 import itertools
 import numpy as np
 
-from util import wavelet_filter, find_crossings, get_files, basename_without_stab
+from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X
 from gui import MPLGUI
 import matplotlib.pyplot as plt
 from matplotlib.widgets import RadioButtons
@@ -44,8 +44,8 @@ class FidGUI(MPLGUI):
                              forceint=True,
                              label='Filter Width',
                              valmin=0,
-                             valmax=12000,
-                             valinit=4000,
+                             valmax=6000,
+                             valinit=2000,
                              )
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
@@ -160,7 +160,7 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
         raise NoPeakError
 
     for i in fid_ind:
-        if i - left_fid > 35000:
+        if i - left_fid > 0.64 * len(filtered_profile):
             right_fid = i
             break
     else:
@@ -233,7 +233,7 @@ def load_strain(dirname):
 def save_fids(parameters, images, left_fids, right_fids):
     initial_displacement = right_fids[0] - left_fids[0]
     strains = (right_fids - left_fids) / initial_displacement - 1
-    parameters.update({'initial_displacement': initial_displacement * 19000 / 55060,
+    parameters.update({'initial_displacement': initial_displacement * PIXEL_SIZE_X,
                        'fields': 'name: (left, right, strain)'})
 
     folder = path.dirname(images[0])

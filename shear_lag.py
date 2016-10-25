@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # import matplotlib.pyplot as plt
     # fig, axs = plt.subplots(3,1,'col')
-    # for ax, data in zip(axs,(break_count,np.log(l_c/avg_frag_len),matrix_stress,)):
+    # for ax, data in zip(axs,(break_count,np.log(critical_length/avg_frag_len),matrix_stress,)):
     #     ax.plot(strains,data)
     # axs[1].plot(strains,np.zeros_like(avg_frag_len),':')
     # plt.show(1)

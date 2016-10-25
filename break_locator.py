@@ -42,21 +42,21 @@ class BreakGUI(MPLGUI):
                              forceint=True,
                              label='Slice Width',
                              valmin=0,
-                             valmax=400,
-                             valinit=200,
+                             valmax=200,
+                             valinit=50,
                              )
         self.register_slider('filter_width', self.update_filter_width,
                              forceint=True,
                              label='Filter Width',
                              valmin=0,
-                             valmax=800,
-                             valinit=400,
+                             valmax=400,
+                             valinit=175,
                              )
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
                              valmax=100,
-                             valinit=50,
+                             valinit=25,
                              )
 
     def load_frame(self):
