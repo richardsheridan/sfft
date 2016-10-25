@@ -10,12 +10,13 @@ from fiber_locator import FiberGUI
 from fiducial_locator import load_strain, FidGUI
 from util import parse_strain_dat, get_files
 
-radius_dict = {'pristine': 5.65,
-               'a1100': 5.65,
-               'a187': 5.65,
+# TODO: collect fiber radius for each dataset from image analysis (fiber_locator.py?)
+radius_dict = {'pristine': 5.78,
+               'a1100': 4.92,
+               'a187': 5.52,
                'old': 7.75,
-               'plant': 12.9,
-               'c9': 7.5,
+               'plant': 7.12,
+               'c9': 7.59,
                }
 
 def choose_dataset():
