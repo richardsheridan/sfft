@@ -186,3 +186,78 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
         return stress[np.searchsorted(time, time_at_max_stress + stress_type)], label
 
     raise ValueError('Could not interpret stress type: ' + str(stress_type))
+
+
+def make_pyramid(image, levels=7):
+    import cv2
+    pyramid = [image]
+    x = image
+    for i in range(levels):
+        x = cv2.pyrDown(x)
+        pyramid.append(x)
+    return pyramid
+
+
+def make_log_pyramid(pyramid):
+    import cv2
+    return [cv2.Laplacian(p, cv2.CV_16S) for p in pyramid]
+
+
+def display_pyramid(pyramid, cmap='gray'):
+    import matplotlib.pyplot as plt
+    fig, axs = plt.subplots(len(pyramid), 1)
+    if len(pyramid) <= 1:
+        axs = [axs]
+    for im, ax in zip(pyramid, axs):
+        ax.imshow(im, cmap=cmap)
+    plt.show()
+
+
+def make_dogs(pyramid, output_dtype='int16', intermediate_dtype='int16'):
+    import cv2
+    output_dtype = np.dtype(output_dtype)
+    intermediate_dtype = np.dtype(intermediate_dtype)
+    dogs = [cv2.pyrUp(small, dstsize=big.shape[::-1]).astype(intermediate_dtype) - big.astype(intermediate_dtype)
+            for big, small in zip(pyramid, pyramid[1:])]
+    if output_dtype != intermediate_dtype:
+        dogs = [dog.astype(output_dtype) for dog in dogs]
+    return dogs
+
+
+def neighbors(point):
+    x, y = point
+    xp = x + 1
+    xm = x - 1
+    yp = y + 1
+    ym = y - 1
+    yield xp, y
+    yield x, yp
+    yield xm, y
+    yield x, ym
+    yield xp, yp
+    yield xm, ym
+    yield xp, ym
+    yield xm, yp
+
+
+def local_maxima(array, threshold):
+    maxima = array > threshold
+
+    def valid(points):
+        max_x, max_y = array.shape
+        for x, y in points:
+            if 0 <= x < max_x and 0 <= y < max_y:
+                yield x, y
+
+    for candidate in zip(*np.where(maxima)):
+        if not maxima[candidate]:
+            continue
+        value = array[candidate]
+        for neighbor in valid(neighbors(candidate)):
+            if maxima[neighbor]:
+                if array[neighbor] <= value:
+                    maxima[neighbor] = False
+                else:
+                    maxima[candidate] = False
+
+    return maxima

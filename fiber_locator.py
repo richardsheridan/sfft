@@ -5,7 +5,7 @@ import cv2
 import itertools
 import numpy as np
 
-from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
+from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, make_pyramid
 from gui import MPLGUI
 
 
@@ -17,8 +17,8 @@ class FiberGUI(MPLGUI):
     def __init__(self, images, downsample=()):
         self.images = images
         self.downsample = downsample
-        self.display_original = True
-        self.display_rotated = False
+        self.display_type = 'original'
+        self.filter_fun = sobel_filter
 
         super().__init__()
 
@@ -30,7 +30,10 @@ class FiberGUI(MPLGUI):
 
         self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
-        self.register_button('type', self.display_type, [.6, .9, .2, .1], widget=RadioButtons, labels=('original', 'edges', 'rotated'))
+        self.register_button('type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
+                             labels=('original', 'filtered', 'edges', 'rotated'))
+        self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
+                             labels=('sobel', 'laplace'))
 
         self.slider_coords =[.3, .4, .55, .03 ]
         self.register_slider('frame_number',self.update_frame_number,
@@ -46,10 +49,30 @@ class FiberGUI(MPLGUI):
                              valmax=2 ** 9 - 1,
                              valinit=70,
                              )
+        self.register_slider('p_level', self.update_edge,
+                             forceint=True,
+                             label='Pyramid Level',
+                             valmin=0,
+                             valmax=8,
+                             valinit=0, )
+        self.register_slider('ksize', self.update_edge,
+                             forceint=True,
+                             label='Kernel size',
+                             valmin=0,
+                             valmax=5,
+                             valinit=0, )
+        self.register_slider('iter', self.update_edge,
+                             forceint=True,
+                             label='morph. iterations',
+                             valmin=0,
+                             valmax=5,
+                             valinit=0, )
+
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
-        self.tdi_array = _load_tdi_corrected(image_path, self.downsample)
+        self.tdi_array = image = _load_tdi_corrected(image_path, self.downsample)
+        self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
         self.recalculate_edges()
@@ -57,7 +80,12 @@ class FiberGUI(MPLGUI):
 
     def recalculate_edges(self):
         threshold = self.sliders['threshold'].val
-        self.edges = sobel_edges(self.tdi_array, threshold)
+        p_level = self.sliders['p_level'].val
+        ksize = self.sliders['ksize'].val * 2 + 1
+        iterations = self.sliders['iter'].val
+        image = self.pyramid[p_level]
+        self.filtered = image = self.filter_fun(image, ksize)
+        self.edges = edges(image, threshold, iterations)
 
     def recalculate_lines(self):
         processed_image_array = self.edges
@@ -67,6 +95,9 @@ class FiberGUI(MPLGUI):
         # slope, intercept, theta = fit_line_fitline(processed_image_array)
 
         self.vshift = _vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
+
+        self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
+        self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
 
     def draw_line(self, image_array, color=255, thickness=4):
         x_size = image_array.shape[1]
@@ -103,19 +134,28 @@ class FiberGUI(MPLGUI):
 
     def refresh_plot(self):
         self.axes['image'].clear()
-
-        if self.display_original:
+        label = self.display_type
+        if label == 'original':
             image = self.tdi_array.copy()
-            if self.display_rotated:
-                image = rotate_fiber(image, self.vshift, self.theta)
-            else:
-                image = self.draw_line(image, 0)
-        else:
+            image = self.draw_line(image, 0)
+        elif label == 'filtered':
+            image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
+            for i in reversed(range(self.sliders['p_level'].val)):
+                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+        elif label == 'edges':
             image = self.edges * 255
-            image = self.draw_line(image, 255)
+            for i in reversed(range(self.sliders['p_level'].val)):
+                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+                # image = self.draw_line(image, 255)
+        elif label == 'rotated':
+            image = self.tdi_array.copy()
+            image = rotate_fiber(image, self.vshift, self.theta)
+        else:
+            print('unknown display type:', label)
+            return
 
-        self.display_image_array = image.copy()
-        image = cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA)
+        self.display_image_array = image  # .astype('uint8')
+        # image = cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA)
         self.axes['image'].imshow(image, cmap='gray')
         self.fig.canvas.draw()
 
@@ -125,21 +165,22 @@ class FiberGUI(MPLGUI):
         key = cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    def display_type(self, label):
-        ('original', 'edges', 'rotated')
-        if label == 'original':
-            self.display_original = True
-            self.display_rotated = False
-        elif label == 'edges':
-            self.display_original = False
-            self.display_rotated = False
-        elif label == 'rotated':
-            self.display_original = True
-            self.display_rotated = True
+    def set_display_type(self, label):
+        self.display_type = label
+
+        self.refresh_plot()
+
+    def edge_type(self, label):
+
+        if label == 'sobel':
+            self.filter_fun = sobel_filter
+        elif label == 'laplace':
+            self.filter_fun = laplacian_filter
         else:
-            print('unknown display type:', label)
+            print('unknown edge type:', label)
             return
 
+        self.recalculate_vision()
         self.refresh_plot()
 
     def execute_batch(self, event):
@@ -233,13 +274,26 @@ def fit_line_fitline(processed_image_array):
     return slope, intercept, theta
 
 
-def sobel_edges(image_array, threshold):
-    dy = cv2.Sobel(image_array, cv2.CV_16S, 0, 1, ksize=3)
-    edges = (dy > threshold).view('uint8')
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
+def sobel_filter(image_array, ksize):
+    dy = cv2.Sobel(image_array, cv2.CV_16S, 0, 1, ksize=ksize, scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
+    return dy
 
+
+def laplacian_filter(image_array, ksize):
+    # display_pyramid(pyramid)
+    log = cv2.Laplacian(image_array, cv2.CV_16S, ksize=ksize, scale=2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1)
+    log[0, :] = 0
+    log[-1, :] = 0
+    return log
+
+
+def edges(filtered_image, threshold, iterations):
+    edges = (filtered_image > threshold).view('uint8')
+
+    if iterations:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=iterations)
+        # edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
     return edges
 
 
@@ -324,8 +378,9 @@ def stabilize_file(image_path, threshold, return_image=False, save_image=False):
     dir, fname = path.split(image_path)
     print('Loading:', fname)
     image = _load_tdi_corrected(image_path)
-    edges = sobel_edges(image, threshold)
-    slope, intercept, theta = fit_line_moments(edges)
+    edgeimage = sobel_filter(image)
+    edgeimage = edges(edgeimage, threshold, 1)
+    slope, intercept, theta = fit_line_moments(edgeimage)
     vshift = _vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta)
