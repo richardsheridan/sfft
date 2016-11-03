@@ -32,7 +32,7 @@ def _force_int(callback, setter):
 
 
 class MPLGUI:
-    cooldown = .1
+    cooldown = .01
 
     def __init__(self,block=True):
         self.fig = NotImplementedAttribute
@@ -61,7 +61,9 @@ class MPLGUI:
         if 'label' not in slider_kwargs:
             slider_kwargs['label'] = name
 
-        ax = self.axes[name] = self.fig.add_axes(self.slider_coords)
+        slider_coords = self.slider_coords
+        ax = self.axes[name] = self.fig.add_axes(slider_coords)
+        slider_coords[1] -= slider_coords[-1] * (5 / 3)
 
         if 'valfmt' not in slider_kwargs:
             if forceint:
@@ -80,7 +82,6 @@ class MPLGUI:
             callback = _force_int(callback, sl.set_val)
 
         sl.on_changed(callback)
-        self.slider_coords[1] -= self.slider_coords[-1] * (5 / 3)
 
     def register_button(self, name, callback, coords, widget=Button, **button_kwargs):
         if ('label' not in button_kwargs and

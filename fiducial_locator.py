@@ -43,7 +43,7 @@ class FidGUI(MPLGUI):
         self.register_slider('filter_width', self.update_filter_width,
                              forceint=True,
                              label='Filter Width',
-                             valmin=0,
+                             valmin=3,
                              valmax=6000,
                              valinit=2000,
                              )
@@ -77,6 +77,7 @@ class FidGUI(MPLGUI):
         fid_profile = self.profile
         self.filtered_profile = np.empty_like(fid_profile, float)
         try:
+            # NOTE: this overwrites self.filtered_profile with the actual filtered profile
             self.locations = np.array(choose_fids(fid_profile, fid_window, fid_amp, self.filtered_profile))
         except NoPeakError:
             print('no peaks found')
@@ -113,17 +114,17 @@ class FidGUI(MPLGUI):
 
     def update_filter_width(self, val):
 
-        self.recalculate_vision()
+        self.recalculate_locations()
         self.refresh_plot()
 
     def update_cutoff(self, val):
 
-        self.recalculate_vision()
+        self.recalculate_locations()
         self.refresh_plot()
 
 
 def fid_profile_from_image(image):
-    fiducial_profile = image.mean(axis=0)  # FIXME: This is SLOW due to array layout
+    fiducial_profile = image.mean(axis=0)  # FIXME: This is SLOW due to array layout, proven by Numba replacement
     fiducial_profile *= -1.0
     fiducial_profile += 255.0
     fiducial_profile -= fiducial_profile.mean()
