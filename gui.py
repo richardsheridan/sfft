@@ -2,14 +2,14 @@ from collections import OrderedDict
 import inspect
 from time import perf_counter
 
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Button, Slider
 from numbers import Integral as Int
 
-@property
-def NotImplementedAttribute(self):
-    raise NotImplementedError
 
+class NotImplementedAttribute:
+    """http://stackoverflow.com/a/32536493/4504950"""
+
+    def __get__(self, obj, type):
+        raise NotImplementedError("This attribute must be set")
 
 def _force_cooldown(callback, cooling_object):
     def cooldown_wrapper(val):
@@ -33,10 +33,11 @@ def _force_int(callback, setter):
 
 class MPLGUI:
     cooldown = .01
+    fig = NotImplementedAttribute()
+    slider_coords = NotImplementedAttribute()
 
     def __init__(self,block=True):
-        self.fig = NotImplementedAttribute
-        self.slider_coords = NotImplementedAttribute
+        import matplotlib.pyplot as plt
 
         self.axes = {}
         self.artists = {}
@@ -71,6 +72,7 @@ class MPLGUI:
             else:
                 slider_kwargs['valfmt']='%.3g'
 
+        from matplotlib.widgets import Slider
         sl = self.sliders[name] = Slider(ax, **slider_kwargs)
 
         if isparameter:
@@ -83,7 +85,10 @@ class MPLGUI:
 
         sl.on_changed(callback)
 
-    def register_button(self, name, callback, coords, widget=Button, **button_kwargs):
+    def register_button(self, name, callback, coords, widget=None, **button_kwargs):
+        if widget is None:
+            from matplotlib.widgets import Button as widget
+
         if ('label' not in button_kwargs and
             'label' in inspect.signature(widget).parameters):
             button_kwargs['label'] = name

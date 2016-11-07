@@ -3,9 +3,7 @@ from multiprocessing import pool, freeze_support
 
 import cv2
 import itertools
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.widgets import RadioButtons
 
 from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
 from gui import MPLGUI
@@ -16,7 +14,7 @@ _map = itertools.starmap
 STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(MPLGUI):
-    def __init__(self, images, block=True, downsample=()):
+    def __init__(self, images, downsample=()):
         self.images = images
         self.downsample = downsample
         self.display_original = True
@@ -25,6 +23,8 @@ class FiberGUI(MPLGUI):
         super().__init__()
 
     def create_layout(self):
+        import matplotlib.pyplot as plt
+        from matplotlib.widgets import RadioButtons
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
         self.fig.subplots_adjust(left=0.1, bottom=0.5)
 

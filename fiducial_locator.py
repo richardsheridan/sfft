@@ -6,8 +6,6 @@ import numpy as np
 
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X
 from gui import MPLGUI
-import matplotlib.pyplot as plt
-from matplotlib.widgets import RadioButtons
 from multiprocessing import pool, freeze_support
 
 _map = itertools.starmap
@@ -23,10 +21,12 @@ class FidGUI(MPLGUI):
         super().__init__()
 
     def create_layout(self):
+        import matplotlib.pyplot as plt
         self.fig, (self.axes['image'], self.axes['profile']) = plt.subplots(2, 1, figsize=(8, 10))
         self.fig.subplots_adjust(left=0.1, bottom=0.3)
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
+        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
 
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
@@ -61,7 +61,7 @@ class FidGUI(MPLGUI):
         ax = self.axes['image']
         ax.clear()
         ax.imshow(cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA), cmap='gray')
-        self.artists['fids'] = ax.plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
+        self.artists['image_fids'] = ax.plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
         ax.autoscale_view(tight=True)
 
     def recalculate_vision(self):
@@ -85,10 +85,13 @@ class FidGUI(MPLGUI):
         print(self.locations)
 
     def refresh_plot(self):
-        self.artists['fids'].set_xdata(self.locations / len(self.profile) * 800)
+        self.artists['image_fids'].set_xdata(self.locations / len(self.profile) * 800)
 
         self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
         self.artists['profile'].set_ydata(self.filtered_profile)
+        self.artists['profile_fids'].set_xdata(self.locations)
+        no_nan = not np.any(np.isnan(self.locations))
+        self.artists['profile_fids'].set_ydata(self.filtered_profile[self.locations if no_nan else [0, 0]])
         self.artists['cutoff'].set_xdata([0, len(self.profile)])
         self.artists['cutoff'].set_ydata([self.sliders['cutoff'].val] * 2)
 
@@ -200,10 +203,9 @@ class NoPeakError(Exception):
 
 def load_fids(image_path, image=None, fid_args=()):
     lpath = image_path.lower()
-    dirname, basename = path.split(lpath)
+    dirname = path.dirname(lpath)
     fid_file = path.join(dirname, FIDUCIAL_FILENAME)
-    if basename.startswith('stab_'):
-        basename = basename[len('stab_'):]
+    basename = basename_without_stab([image_path])[0]
     try:  # if os.path.exists(fid_file):
         with open(fid_file) as fp:
             import json

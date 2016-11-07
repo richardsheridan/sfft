@@ -4,6 +4,7 @@ from tkinter.filedialog import askopenfilename, asksaveasfilename
 import numpy as np
 # from numpy import convolve
 from scipy.signal import fftconvolve as convolve, ricker, gaussian
+from numbers import Integral as Int
 
 STABILIZE_PREFIX = 'stab_'
 
@@ -112,18 +113,19 @@ def find_crossings(smooth_series, slope_cutoff=None):
 
 def path_with_stab(path):
     dirname, filename = os.path.split(path)
+    filename, ext = os.path.splitext(filename)
     if filename.lower().startswith(STABILIZE_PREFIX):
         return path
     else:
-        return os.path.join(dirname, STABILIZE_PREFIX + filename)
+        return os.path.join(dirname, STABILIZE_PREFIX + filename + '.jpg')
 
 
 def basename_without_stab(images):
-    name_gen = (os.path.basename(x).lower() for x in images)
+    name_gen = (os.path.splitext(os.path.basename(x))[0].lower() for x in images)
     return [x[len(STABILIZE_PREFIX):] if x.startswith(STABILIZE_PREFIX) else x for x in name_gen]
 
 
-def parse_strain_dat(straindatpath, max_cycle=None):
+def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
     if os.path.isdir(straindatpath):
         straindatpath = os.path.join(straindatpath, 'STRAIN.DAT')
     with open(straindatpath) as f:
@@ -150,17 +152,37 @@ def parse_strain_dat(straindatpath, max_cycle=None):
                                                               ],
                                                        unpack=True,
                                                        )
+    stress = force / (width * thickness)
+
     if max_cycle is not None:
         cycle = cycle[cycle <= max_cycle]
-    # fudge cycle number to trigger logging of first and last data points
-    cycle[0] = 0
+
     if s_or_d[-1] == b'delay':  # detect if cycle ended properly
         cycle[-1] = 0
-    cycle_changes = np.where(np.diff(cycle))
 
-    force = force[cycle_changes]
-    time = time[cycle_changes]
-    extension = extension[cycle_changes]
+    cycle_changes = np.diff(cycle)
 
-    # TODO: return maximum force in a cycle
-    return force / width / thickness, label
+    before_tdi = np.nonzero(cycle_changes)[0]
+    if stress_type == 'before_tdi':
+        return stress[before_tdi], label
+
+    after_tdi = np.concatenate(([0], before_tdi[:-1] + 1))
+    if stress_type == 'after_tdi':
+        return stress[after_tdi], label
+
+    max_stress = np.array([np.argmax(stress[low:high]) + low for low, high in zip(after_tdi, before_tdi)])
+    if stress_type == 'max':
+        return stress[max_stress], label
+
+    time_at_max_stress = time[max_stress]
+    if stress_type == 'all':
+        tensec = np.searchsorted(time, time_at_max_stress + 10)
+
+        eightmin = np.searchsorted(time, time_at_max_stress + (8 * 60))
+
+        return stress, (before_tdi, after_tdi, max_stress, tensec, eightmin), label
+
+    if issubclass(stress_type, Int):
+        return stress[np.searchsorted(time, time_at_max_stress + stress_type)], label
+
+    raise ValueError('Could not interpret stress type: ' + str(stress_type))
