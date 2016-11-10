@@ -202,6 +202,10 @@ def make_log_pyramid(pyramid):
     import cv2
     return [cv2.Laplacian(p, cv2.CV_16S) for p in pyramid]
 
+def puff_pyramid(pyramid, level, tolevel=0, image=None):
+    image = pyramid[level].copy() if image is None else image.copy()
+    for i in reversed(range(tolevel,level)):
+        image = cv2.pyrUp(image, dstsize=pyramid[i].shape[::-1])
 
 def display_pyramid(pyramid, cmap='gray'):
     import matplotlib.pyplot as plt
@@ -224,8 +228,17 @@ def make_dogs(pyramid, output_dtype='int16', intermediate_dtype='int16'):
     return dogs
 
 
+def make_dog(image, sigma_wide, sigma_narrow):
+    import cv2
+    if sigma_wide < sigma_narrow:
+        sigma_wide, sigma_narrow = sigma_narrow, sigma_wide
+    image = np.float32(image)
+    return cv2.GaussianBlur(image, (0, 0), sigma_wide) - cv2.GaussianBlur(image, (0, 0), sigma_narrow)
 
 
+def make_log(image, sigma):
+    import cv2
+    cv2.Laplacian(cv2.GaussianBlur(image.astype(np.float32), (0, 0), sigma), cv2.CV_32F)
 
 
 def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1):
