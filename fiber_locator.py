@@ -201,9 +201,6 @@ class FiberGUI(MPLGUI):
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_open_close(self, val):
-        self.update_edge(val)
-
 
 
 def _si_from_ct(centroid, theta):
@@ -275,13 +272,13 @@ def fit_line_fitline(processed_image_array):
 
 
 def sobel_filter(image_array, ksize):
-    dy = cv2.Sobel(image_array, cv2.CV_16S, 0, 1, ksize=ksize, scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
+    dy = cv2.Sobel(image_array, cv2.CV_32F, 0, 1, ksize=ksize, scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
     return dy
 
 
 def laplacian_filter(image_array, ksize):
     # display_pyramid(pyramid)
-    log = cv2.Laplacian(image_array, cv2.CV_16S, ksize=ksize, scale=2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1)
+    log = cv2.Laplacian(image_array, cv2.CV_32F, ksize=ksize, scale=2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1)
     log[0, :] = 0
     log[-1, :] = 0
     return log

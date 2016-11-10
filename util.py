@@ -197,11 +197,6 @@ def make_pyramid(image, levels=7):
         pyramid.append(x)
     return pyramid
 
-
-def make_log_pyramid(pyramid):
-    import cv2
-    return [cv2.Laplacian(p, cv2.CV_16S) for p in pyramid]
-
 def puff_pyramid(pyramid, level, tolevel=0, image=None):
     image = pyramid[level].copy() if image is None else image.copy()
     for i in reversed(range(tolevel,level)):
@@ -216,11 +211,13 @@ def display_pyramid(pyramid, cmap='gray'):
         ax.imshow(im, cmap=cmap)
     plt.show()
 
-
-def make_dogs(pyramid, output_dtype='int16', intermediate_dtype='int16'):
+def make_log_pyramid(pyramid):
     import cv2
-    output_dtype = np.dtype(output_dtype)
-    intermediate_dtype = np.dtype(intermediate_dtype)
+    return [cv2.Laplacian(p, cv2.CV_32F) for p in pyramid]
+
+
+def make_dog_pyramid(pyramid, output_dtype=np.float32, intermediate_dtype=np.float32):
+    import cv2
     dogs = [cv2.pyrUp(small, dstsize=big.shape[::-1]).astype(intermediate_dtype) - big.astype(intermediate_dtype)
             for big, small in zip(pyramid, pyramid[1:])]
     if output_dtype != intermediate_dtype:
