@@ -4,7 +4,7 @@ from tkinter.filedialog import askopenfilename, asksaveasfilename
 import numpy as np
 # from numpy import convolve
 from scipy.signal import fftconvolve as convolve, ricker, gaussian
-from numbers import Integral as Int
+from numbers import Integral as Int, Number
 
 STABILIZE_PREFIX = 'stab_'
 
@@ -224,40 +224,61 @@ def make_dogs(pyramid, output_dtype='int16', intermediate_dtype='int16'):
     return dogs
 
 
-def neighbors(point):
-    x, y = point
-    xp = x + 1
-    xm = x - 1
-    yp = y + 1
-    ym = y - 1
-    yield xp, y
-    yield x, yp
-    yield xm, y
-    yield x, ym
-    yield xp, yp
-    yield xm, ym
-    yield xp, ym
-    yield xm, yp
 
 
-def local_maxima(array, threshold):
-    maxima = array > threshold
 
-    def valid(points):
-        max_x, max_y = array.shape
-        for x, y in points:
-            if 0 <= x < max_x and 0 <= y < max_y:
-                yield x, y
 
+def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1):
+    if threshold is None:
+        maxima = np.ones_like(image, bool)
+    elif isinstance(threshold, Number):
+        maxima = image > threshold
+    else:
+        maxima = np.asanyarray(threshold, bool)
+
+    rows, cols = image.shape
+
+    n = neighborhood
     for candidate in zip(*np.where(maxima)):
         if not maxima[candidate]:
             continue
-        value = array[candidate]
-        for neighbor in valid(neighbors(candidate)):
-            if maxima[neighbor]:
-                if array[neighbor] <= value:
-                    maxima[neighbor] = False
-                else:
-                    maxima[candidate] = False
 
+        r, c = candidate
+        rowslice = slice(max(r - n, 0), min(r + n + 1, rows))
+        colslice = slice(max(c - n, 0), min(c + n + 1, cols))
+        neighborhood_array = image[rowslice, colslice]
+        neighborhood_maxima = maxima[rowslice, colslice]
+        # TODO: incorporate footprint matrix for round neighborhood
+        neighborhood_maxima[:] = False  # there can be only one
+        neighborhood_maxima[np.unravel_index(np.argmax(neighborhood_array),
+                                             neighborhood_maxima.shape)] = True  # Highlander!
     return maxima
+
+if __name__ == '__main__':
+    import cv2
+    from time import perf_counter
+
+    image = cv2.imread(r'C:\Users\rjs3\Desktop\test.jpg', cv2.IMREAD_GRAYSCALE)
+    import matplotlib.pyplot as plt
+
+    footprint = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+    t0 = perf_counter()
+    result = peak_local_max(image, 220, 40)
+    t1 = perf_counter()
+    derp = ((cv2.dilate(image, footprint) == image) & (image > 220))
+    t2 = perf_counter()
+    result2 = peak_local_max(image, derp, 40)
+    t3 = perf_counter()
+    print('easy:', t1 - t0, np.count_nonzero(result))
+    print('derp:', t2 - t1, np.count_nonzero(derp))
+    print('hard:', t3 - t2, np.count_nonzero(result2))
+
+    # im2=cv2.imread(r'C:\Users\rjs3\onedrive\data\sfft\09091321\STR29D.TIF',cv2.IMREAD_GRAYSCALE)
+    im2 = image
+    pyr = make_pyramid(im2)
+    # plt.imshow(im3,'gray');plt.show(1)
+    t4 = perf_counter()
+    im3 = make_dog(pyr[2], 16, 10)
+    result3 = peak_local_max(im3, 15, 10)
+    t5 = perf_counter()
+    print('dogs:', t5 - t4, np.count_nonzero(result3))
