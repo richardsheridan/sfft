@@ -6,7 +6,7 @@ from os import path
 import cv2
 import numpy as np
 
-from util import wavelet_filter, find_crossings, get_files, basename_without_stab
+from util import wavelet_filter, find_crossings, get_files, basename_without_stab, DISPLAY_SIZE
 from gui import MPLGUI
 
 BREAK_FILENAME = 'breaks.json'
@@ -26,7 +26,7 @@ class BreakGUI(MPLGUI):
         self.fig.subplots_adjust(left=0.1, bottom=0.3)
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [453 / 2] * 2, 'rx', ms=10)[0]
+        self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
         self.slider_coords = [.3, .20, .55, .03]
@@ -71,8 +71,8 @@ class BreakGUI(MPLGUI):
         ax = self.axes['image']
         self.image = image
         ax.clear()
-        ax.imshow(cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA), cmap='gray')
-        self.artists['image_breaks'] = ax.plot([100] * 2, [453 / 2] * 2, 'rx', ms=10)[0]
+        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_AREA), cmap='gray')
+        self.artists['image_breaks'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         ax.autoscale_view(tight=True)
 
     def recalculate_vision(self):
@@ -91,8 +91,8 @@ class BreakGUI(MPLGUI):
         print(self.locations)
 
     def refresh_plot(self):
-        self.artists['image_breaks'].set_xdata(self.locations / len(self.profile) * 800)
-        self.artists['image_breaks'].set_ydata(np.full_like(self.locations, 453 / 2))
+        self.artists['image_breaks'].set_xdata(self.locations / len(self.profile) * DISPLAY_SIZE[0])
+        self.artists['image_breaks'].set_ydata(np.full_like(self.locations, DISPLAY_SIZE[1] / 2))
         # TODO: indicate breaks in profile plot as well
 
         self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))

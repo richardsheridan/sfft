@@ -4,7 +4,7 @@ import cv2
 import itertools
 import numpy as np
 
-from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X
+from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X, DISPLAY_SIZE
 from gui import MPLGUI
 from multiprocessing import pool, freeze_support
 
@@ -26,7 +26,7 @@ class FidGUI(MPLGUI):
         self.fig.subplots_adjust(left=0.1, bottom=0.3)
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
+        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
 
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
@@ -60,8 +60,8 @@ class FidGUI(MPLGUI):
         self.image = image = load_stab_tif(image_path, self.stabilize_args)
         ax = self.axes['image']
         ax.clear()
-        ax.imshow(cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA), cmap='gray')
-        self.artists['image_fids'] = ax.plot([100] * 2, [453 / 2] * 2, 'r.', ms=10)[0]
+        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_AREA), cmap='gray')
+        self.artists['image_fids'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
         ax.autoscale_view(tight=True)
 
     def recalculate_vision(self):
@@ -85,7 +85,7 @@ class FidGUI(MPLGUI):
         print(self.locations)
 
     def refresh_plot(self):
-        self.artists['image_fids'].set_xdata(self.locations / len(self.profile) * 800)
+        self.artists['image_fids'].set_xdata(self.locations / len(self.profile) * DISPLAY_SIZE[0])
 
         self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
         self.artists['profile'].set_ydata(self.filtered_profile)

@@ -7,6 +7,7 @@ from scipy.signal import fftconvolve as convolve, ricker, gaussian
 from numbers import Integral as Int, Number
 
 STABILIZE_PREFIX = 'stab_'
+DISPLAY_SIZE = (1200, 450)
 
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel

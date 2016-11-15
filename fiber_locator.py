@@ -5,7 +5,7 @@ import cv2
 import itertools
 import numpy as np
 
-from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
+from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
 from cvutil import make_pyramid, sobel_filter
 from gui import MPLGUI
 
@@ -154,7 +154,7 @@ class FiberGUI(MPLGUI):
             return
 
         self.display_image_array = image  # .astype('uint8')
-        image = cv2.resize(image, (1200, 450), interpolation=cv2.INTER_CUBIC)
+        image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
         self.axes['image'].imshow(image, cmap='gray')
         self.fig.canvas.draw()
 
