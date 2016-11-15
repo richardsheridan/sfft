@@ -14,11 +14,9 @@ _map = itertools.starmap
 STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(MPLGUI):
-    def __init__(self, images, downsample=()):
+    def __init__(self, images):
         self.images = images
-        self.downsample = downsample
         self.display_type = 'original'
-        self.filter_fun = sobel_filter
 
         super().__init__()
 
@@ -26,16 +24,16 @@ class FiberGUI(MPLGUI):
         import matplotlib.pyplot as plt
         from matplotlib.widgets import RadioButtons
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.5)
+        self.fig.subplots_adjust(left=0.1, bottom=0.3)
 
         self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
         self.register_button('type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
                              labels=('original', 'filtered', 'edges', 'rotated'))
-        self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
-                             labels=('sobel', 'laplace'))
+        # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
+        #                      labels=('sobel', 'laplace'))
 
-        self.slider_coords =[.3, .4, .55, .03 ]
+        self.slider_coords = [.3, .25, .55, .03]
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
                              forceint=True,
@@ -55,23 +53,23 @@ class FiberGUI(MPLGUI):
                              valmin=0,
                              valmax=8,
                              valinit=0, )
-        self.register_slider('ksize', self.update_edge,
-                             forceint=True,
-                             label='Kernel size',
-                             valmin=0,
-                             valmax=5,
-                             valinit=0, )
-        self.register_slider('iter', self.update_edge,
-                             forceint=True,
-                             label='morph. iterations',
-                             valmin=0,
-                             valmax=5,
-                             valinit=0, )
+        # self.register_slider('ksize', self.update_edge,
+        #                      forceint=True,
+        #                      label='Kernel size',
+        #                      valmin=0,
+        #                      valmax=5,
+        #                      valinit=0, )
+        # self.register_slider('iter', self.update_edge,
+        #                      forceint=True,
+        #                      label='morph. iterations',
+        #                      valmin=0,
+        #                      valmax=5,
+        #                      valinit=0, )
 
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
-        self.tdi_array = image = _load_tdi_corrected(image_path, self.downsample)
+        self.tdi_array = image = _load_tdi_corrected(image_path)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
@@ -81,11 +79,9 @@ class FiberGUI(MPLGUI):
     def recalculate_edges(self):
         threshold = self.sliders['threshold'].val
         p_level = self.sliders['p_level'].val
-        ksize = self.sliders['ksize'].val * 2 + 1
-        iterations = self.sliders['iter'].val
         image = self.pyramid[p_level]
-        self.filtered = image = self.filter_fun(image, ksize)
-        self.edges = edges(image, threshold, iterations)
+        self.filtered = image = sobel_filter(image)
+        self.edges = edges(image, threshold)
 
     def recalculate_lines(self):
         processed_image_array = self.edges
@@ -99,7 +95,7 @@ class FiberGUI(MPLGUI):
         self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
         self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
 
-    def draw_line(self, image_array, color=255, thickness=4):
+    def draw_line(self, image_array, color=255, thickness=2):
         x_size = image_array.shape[1]
         max_chunk = 2 ** 14
         chunks = x_size // max_chunk
@@ -142,11 +138,13 @@ class FiberGUI(MPLGUI):
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
             for i in reversed(range(self.sliders['p_level'].val)):
                 image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+
+            image = self.draw_line(image, float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
             for i in reversed(range(self.sliders['p_level'].val)):
                 image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
-                # image = self.draw_line(image, 255)
+            image = self.draw_line(image, 255)
         elif label == 'rotated':
             image = self.tdi_array.copy()
             image = rotate_fiber(image, self.vshift, self.theta)
@@ -155,7 +153,7 @@ class FiberGUI(MPLGUI):
             return
 
         self.display_image_array = image  # .astype('uint8')
-        # image = cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA)
+        image = cv2.resize(image, (1200, 450), interpolation=cv2.INTER_CUBIC)
         self.axes['image'].imshow(image, cmap='gray')
         self.fig.canvas.draw()
 
@@ -170,18 +168,18 @@ class FiberGUI(MPLGUI):
 
         self.refresh_plot()
 
-    def edge_type(self, label):
-
-        if label == 'sobel':
-            self.filter_fun = sobel_filter
-        elif label == 'laplace':
-            self.filter_fun = laplacian_filter
-        else:
-            print('unknown edge type:', label)
-            return
-
-        self.recalculate_vision()
-        self.refresh_plot()
+    # def edge_type(self, label):
+    #
+    #     if label == 'sobel':
+    #         self.filter_fun = sobel_filter
+    #     elif label == 'laplace':
+    #         self.filter_fun = laplacian_filter
+    #     else:
+    #         print('unknown edge type:', label)
+    #         return
+    #
+    #     self.recalculate_vision()
+    #     self.refresh_plot()
 
     def execute_batch(self, event):
         threshold, = self.parameters.values()
@@ -215,20 +213,17 @@ def _vshift_from_si_shape(slope, intercept, shape):
     return shape[0] // 2 - y_middle
 
 
-def _load_tdi_corrected(image_path, downsample=None):
+def _load_tdi_corrected(image_path):
     tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-    if downsample and len(downsample) == 2 and downsample > (2, 2):
-        x, y = downsample
-    else:
-        y, x = tdi_array.shape
-        y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
-        # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
+    y, x = tdi_array.shape
+    y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
+    # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
 
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
-    tdi_array = clahe.apply(tdi_array)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
+    # tdi_array = clahe.apply(tdi_array)
 
-    tdi_array = cv2.resize(tdi_array, dsize=(x, y,), interpolation=cv2.INTER_AREA)
+    tdi_array = cv2.resize(tdi_array, dsize=(x, y), interpolation=cv2.INTER_CUBIC)
 
     return tdi_array
 
@@ -284,7 +279,7 @@ def laplacian_filter(image_array, ksize):
     return log
 
 
-def edges(filtered_image, threshold, iterations):
+def edges(filtered_image, threshold, iterations=0):
     edges = (filtered_image > threshold).view('uint8')
 
     if iterations:
