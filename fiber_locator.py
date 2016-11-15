@@ -5,7 +5,8 @@ import cv2
 import itertools
 import numpy as np
 
-from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, make_pyramid
+from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
+from cvutil import make_pyramid, sobel_filter
 from gui import MPLGUI
 
 
@@ -264,19 +265,6 @@ def fit_line_fitline(processed_image_array):
     theta = np.arctan2(line[1], line[0])
     slope, intercept = _si_from_ct(centroid, theta)
     return slope, intercept, theta
-
-
-def sobel_filter(image_array, ksize):
-    dy = cv2.Sobel(image_array, cv2.CV_32F, 0, 1, ksize=ksize, scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
-    return dy
-
-
-def laplacian_filter(image_array, ksize):
-    # display_pyramid(pyramid)
-    log = cv2.Laplacian(image_array, cv2.CV_32F, ksize=ksize, scale=2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1)
-    log[0, :] = 0
-    log[-1, :] = 0
-    return log
 
 
 def edges(filtered_image, threshold, iterations=0):
