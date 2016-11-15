@@ -253,28 +253,44 @@ def rotate_fiber(image, vshift, theta):
     # theta = np.atan(2*np.tan(theta))
     theta_deg = theta * 180 / np.pi
 
-    rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
-    transform = _compose(rotation, translation)
-    return cv2.warpAffine(image, transform, (x_size, y_size), borderValue=mean)
-
     # rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
     # transform = _compose(rotation, translation)
-    # lefthalf = cv2.warpAffine(image[:, :x_size // 2], transform, (x_size // 2, y_size), borderValue=mean)
-    #
-    # rotation = cv2.getRotationMatrix2D((0, y_size // 2), theta_deg, 1)
-    # transform = _compose(rotation, translation)
-    # righthalf = cv2.warpAffine(image[:, x_size // 2:], transform, (x_size // 2, y_size), borderValue=mean)
-    #
-    # output = np.hstack((lefthalf, righthalf))
-    #
-    # patchwidth = 10
-    # patchslice = slice(x_size // 2 - patchwidth // 2, x_size // 2 + patchwidth // 2)
-    # rotation = cv2.getRotationMatrix2D((patchwidth // 2, y_size // 2), theta_deg, 1)
-    # transform = _compose(rotation, translation)
-    # cv2.warpAffine(image[:, patchslice], transform, (patchwidth, y_size), dst=output[:, patchslice],
-    #                borderMode=cv2.BORDER_TRANSPARENT, borderValue=mean)
-    #
-    # return output
+    # return cv2.warpAffine(image, transform, (x_size, y_size), borderValue=mean)
+
+    x_size = image.shape[1]
+    max_chunk = 2 ** 15
+    patchwidth = 20
+    chunks = x_size // max_chunk
+    image_parts = []
+    for chunk in range(chunks):
+        x0 = max_chunk * chunk
+        x1 = x0 + max_chunk
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        image_parts.append(cv2.warpAffine(image[:, x0:x1], transform, (max_chunk, y_size), borderValue=mean))
+
+    if x_size % max_chunk:
+        x0 = max_chunk * chunks
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        image_parts.append(cv2.warpAffine(image[:, x0:], transform, (x_size - x0, y_size), borderValue=mean))
+
+    output = np.hstack(image_parts)
+
+    for chunk in range(chunks):
+        x0 = max_chunk * chunk
+        x1 = x0 + max_chunk
+
+        px1 = x1 + patchwidth // 2
+        if px1 >= x_size:
+            px1 = x_size
+        px0 = x1 - patchwidth // 2
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - px0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        cv2.warpAffine(image[:, px0:px1], transform, (patchwidth, y_size), dst=output[:, px0:px1],
+                       borderMode=cv2.BORDER_TRANSPARENT)
+
+    return output
 
 
 def _compose(a, b):
