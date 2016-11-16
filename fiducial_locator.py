@@ -1,7 +1,7 @@
 from os import path
 
 import cv2
-import itertools
+from itertools import starmap as _map, repeat
 import numpy as np
 
 from cvutil import make_pyramid
@@ -9,7 +9,6 @@ from util import wavelet_filter, find_crossings, get_files, basename_without_sta
 from gui import MPLGUI
 from multiprocessing import pool, freeze_support
 
-_map = itertools.starmap
 
 FIDUCIAL_FILENAME = 'fiducials.json'
 
@@ -127,7 +126,8 @@ class FidGUI(MPLGUI):
         self.refresh_plot()
 
     def update_filter_width(self, val):
-
+        if val == 0:
+            print('zero')
         self.recalculate_locations()
         self.refresh_plot()
 
@@ -159,7 +159,6 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
         filtered_profile = np.empty_like(fid_profile, float)
     fid_window = fid_window*len(fid_profile)
     filtered_profile[:] = wavelet_filter(fid_profile, fid_window)
-
     l = len(filtered_profile)
     # only start looking after first zero
     for i, value in enumerate(fid_profile):
@@ -191,8 +190,9 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
     return left_fid/l, right_fid/l
 
 
-def batch_fids(image_paths, *args):
-    args = itertools.repeat(args)
+def batch_fids(image_paths, filter_width, cutoff, p_level, stabilize_args=()):
+    args = filter_width, cutoff, p_level, stabilize_args
+    args = repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
     freeze_support()
     p = pool.Pool()

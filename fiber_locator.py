@@ -2,7 +2,7 @@ from os import path
 from multiprocessing import pool, freeze_support
 
 import cv2
-import itertools
+from itertools import starmap as _map, repeat
 import numpy as np
 
 from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
@@ -10,7 +10,6 @@ from cvutil import make_pyramid, sobel_filter
 from gui import MPLGUI
 
 
-_map = itertools.starmap
 
 STABILIZE_FILENAME = 'stabilize.json'
 
@@ -52,7 +51,7 @@ class FiberGUI(MPLGUI):
                              forceint=True,
                              label='Pyramid Level',
                              valmin=0,
-                             valmax=8,
+                             valmax=7,
                              valinit=0, )
         # self.register_slider('ksize', self.update_edge,
         #                      forceint=True,
@@ -315,14 +314,15 @@ def _compose(a, b):
     return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]
 
 
-def batch_stabilize(image_paths, *args):
+def batch_stabilize(image_paths, threshold, p_level,):
     """
     Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
     :param image_paths:
     :param args:
     :return:
     """
-    args = tuple(itertools.repeat(args, len(image_paths)))
+    args = threshold, p_level,
+    args = repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
     freeze_support()
     p = pool.Pool()
