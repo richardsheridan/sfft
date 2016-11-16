@@ -41,11 +41,10 @@ class FidGUI(MPLGUI):
                              valinit=0,
                              )
         self.register_slider('filter_width', self.update_filter_width,
-                             forceint=True,
                              label='Filter Width',
-                             valmin=3,
-                             valmax=6000,
-                             valinit=2000,
+                             valmin=0,
+                             valmax=.035,
+                             valinit=.009,
                              )
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',

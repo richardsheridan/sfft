@@ -84,9 +84,15 @@ def cwt(data, wavelet, widths):
     return output
 
 
-def wavelet_filter(series, window_size, bandwidth=None):
-    sigma = window_size / 9
-    if bandwidth is None or bandwidth <= 0:
+def wavelet_filter(series, sigma, bandwidth=None):
+    window_size = int(sigma * 9)
+    if window_size <= 3:
+        window_array = np.array((-1.0,2.0,-1.0))
+    elif window_size <= 5:
+        window_array = np.array((-1.0,16.0,-30.0,16.0,-1.0))
+    elif window_size <= 7:
+        window_array = np.array((2.0,-27.0,270.0,-490.0,270.0,-27.0,2.0))
+    elif bandwidth is None or bandwidth <= 0:
         window_array = ricker(window_size, sigma)
     else:
         narrow_window = gaussian(window_size, sigma - bandwidth)
