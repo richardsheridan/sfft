@@ -4,6 +4,7 @@ import cv2
 import itertools
 import numpy as np
 
+from cvutil import make_pyramid
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X, DISPLAY_SIZE
 from gui import MPLGUI
 from multiprocessing import pool, freeze_support
@@ -49,26 +50,29 @@ class FidGUI(MPLGUI):
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
-                             valmax=100,
-                             valinit=50,
+                             valmax=60,
+                             valinit=30,
                              )
+        self.register_slider('p_level', self.update_p_level,
+                             forceint=True,
+                             label='Pyramid Level',
+                             valmin=0,
+                             valmax=7,
+                             valinit=4, )
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
         from fiber_locator import load_stab_tif
         self.image = image = load_stab_tif(image_path, self.stabilize_args)
-        ax = self.axes['image']
-        ax.clear()
-        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_AREA), cmap='gray')
-        self.artists['image_fids'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
-        ax.autoscale_view(tight=True)
+        self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
         self.recalculate_profile()
         self.recalculate_locations()
 
     def recalculate_profile(self):
-        self.profile = fid_profile_from_image(self.image)
+        image = self.pyramid[self.sliders['p_level'].val]
+        self.profile = fid_profile_from_image(image)
 
     def recalculate_locations(self):
         fid_window = self.sliders['filter_width'].val
@@ -84,13 +88,21 @@ class FidGUI(MPLGUI):
         print(self.locations)
 
     def refresh_plot(self):
-        self.artists['image_fids'].set_xdata(self.locations / len(self.profile) * DISPLAY_SIZE[0])
+        ax = self.axes['image']
+        ax.clear()
+        display_image = self.pyramid[self.sliders['p_level'].val]
+        ax.imshow(cv2.resize(display_image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
+        self.artists['image_fids'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
+        ax.autoscale_view(tight=True)
+        self.artists['image_fids'].set_xdata(self.locations * DISPLAY_SIZE[0])
 
-        self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
+        l = len(self.filtered_profile)
+        locations = self.locations * l
+        self.artists['profile'].set_xdata(np.arange(l))
         self.artists['profile'].set_ydata(self.filtered_profile)
-        self.artists['profile_fids'].set_xdata(self.locations)
-        no_nan = not np.any(np.isnan(self.locations))
-        self.artists['profile_fids'].set_ydata(self.filtered_profile[self.locations if no_nan else [0, 0]])
+        self.artists['profile_fids'].set_xdata(locations)
+        no_nan = not np.any(np.isnan(locations))
+        self.artists['profile_fids'].set_ydata(self.filtered_profile[np.int64(locations) if no_nan else [0, 0]])
         self.artists['cutoff'].set_xdata([0, len(self.profile)])
         self.artists['cutoff'].set_ydata([self.sliders['cutoff'].val] * 2)
 
@@ -122,6 +134,11 @@ class FidGUI(MPLGUI):
     def update_cutoff(self, val):
 
         self.recalculate_locations()
+        self.refresh_plot()
+
+    def update_p_level(self, val):
+
+        self.recalculate_vision()
         self.refresh_plot()
 
 
@@ -184,17 +201,18 @@ def batch_fids(image_paths, *args):
     return locations
 
 
-def locate_fids(image, filter_width, cutoff, stabilize_args=()):
+def locate_fids(image, filter_width, cutoff, p_level, stabilize_args=()):
     if isinstance(image, str):  # TODO: more robust dispatch
         print('Processing: ' + path.basename(image))
         from fiber_locator import load_stab_tif
         image = load_stab_tif(image, *stabilize_args)
+        pyramid = make_pyramid(image, p_level)
     elif isinstance(image, np.ndarray):
         pass
     else:
         raise ValueError('Unknown type', type(image))
 
-    profile = fid_profile_from_image(image)
+    profile = fid_profile_from_image(pyramid[p_level])
     return choose_fids(profile, filter_width, cutoff)
 
 
