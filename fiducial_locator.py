@@ -141,8 +141,10 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
         # without making other workflows more complicated. So we only make a
         # new array when we know we don't have one to mutate from elsewhere.
         filtered_profile = np.empty_like(fid_profile, float)
+    fid_window = fid_window*len(fid_profile)
     filtered_profile[:] = wavelet_filter(fid_profile, fid_window)
 
+    l = len(filtered_profile)
     # only start looking after first zero
     for i, value in enumerate(fid_profile):
         if value <= 0:
@@ -164,13 +166,13 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
         raise NoPeakError
 
     for i in fid_ind:
-        if i - left_fid > 0.64 * len(filtered_profile):
+        if i - left_fid > 0.64 * l:
             right_fid = i
             break
     else:
         raise NoPeakError(locals())
 
-    return left_fid, right_fid
+    return left_fid/l, right_fid/l
 
 
 def batch_fids(image_paths, *args):
@@ -236,7 +238,7 @@ def load_strain(dirname):
 def save_fids(parameters, images, left_fids, right_fids):
     initial_displacement = right_fids[0] - left_fids[0]
     strains = (right_fids - left_fids) / initial_displacement - 1
-    parameters.update({'initial_displacement': initial_displacement * PIXEL_SIZE_X,
+    parameters.update({'initial_displacement': initial_displacement *  19000, # TODO: get size info from strain.dat
                        'fields': 'name: (left, right, strain)'})
 
     folder = path.dirname(images[0])

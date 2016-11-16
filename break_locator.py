@@ -47,7 +47,6 @@ class BreakGUI(MPLGUI):
                              valinit=50,
                              )
         self.register_slider('filter_width', self.update_filter_width,
-                             forceint=True,
                              label='Filter Width',
                              valmin=0,
                              valmax=400,
