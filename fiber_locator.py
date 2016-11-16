@@ -183,12 +183,12 @@ class FiberGUI(MPLGUI):
     #     self.refresh_plot()
 
     def execute_batch(self, event):
-        threshold, = self.parameters.values()
+        threshold, p_level = self.parameters.values()
         return_image = False
         save_image = True
         images = self.images
-        x = batch_stabilize(images, threshold, return_image, save_image)
-        save_stab(images, x, threshold)
+        x = batch_stabilize(images, threshold, p_level, return_image, save_image)
+        save_stab(images, x, threshold, p_level)
 
     def update_frame_number(self, val):
         self.load_frame()
@@ -327,7 +327,7 @@ def batch_stabilize(image_paths, *args):
     freeze_support()
     p = pool.Pool()
     _map = p.starmap
-    return _map(stabilize_file, args)
+    return list(_map(stabilize_file, args))
 
 
 def load_stab_data(stabilized_image_path):
@@ -354,13 +354,15 @@ def load_stab_tif(image_path, *stabilize_args):
     return image
 
 
-def stabilize_file(image_path, threshold, return_image=False, save_image=False):
+def stabilize_file(image_path, threshold, p_level, return_image=False, save_image=False):
     dir, fname = path.split(image_path)
     print('Loading:', fname)
     image = _load_tdi_corrected(image_path)
-    edgeimage = sobel_filter(image)
-    edgeimage = edges(edgeimage, threshold, 1)
+    pyramid = make_pyramid(image, p_level)
+    edgeimage = sobel_filter(pyramid[p_level])
+    edgeimage = edges(edgeimage, threshold)
     slope, intercept, theta = fit_line_moments(edgeimage)
+    intercept = intercept / edgeimage.shape[0] * image.shape[0]
     vshift = _vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta)
@@ -373,7 +375,7 @@ def stabilize_file(image_path, threshold, return_image=False, save_image=False):
     return vshift, theta
 
 
-def save_stab(image_paths, batch, threshold):
+def save_stab(image_paths, batch, threshold, p_level):
     data = {path.basename(image_path).lower(): (vshift, theta)
             for image_path, (vshift, theta) in zip(image_paths, batch)}
     for image_path, (vshift, theta) in zip(image_paths, batch):
@@ -381,6 +383,7 @@ def save_stab(image_paths, batch, threshold):
         data[fname] = vshift, theta
 
     header = {'threshold': threshold,
+              'p_level': p_level,
               'fields:': 'name: [vshift, theta]',
               }
 
