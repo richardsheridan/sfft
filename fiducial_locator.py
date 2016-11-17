@@ -40,6 +40,12 @@ class FidGUI(MPLGUI):
                              valmax=len(self.images) - 1,
                              valinit=0,
                              )
+        self.register_slider('p_level', self.update_p_level,
+                             forceint=True,
+                             label='Pyramid Level',
+                             valmin=0,
+                             valmax=7,
+                             valinit=4, )
         self.register_slider('filter_width', self.update_filter_width,
                              label='Filter Width',
                              valmin=0,
@@ -52,12 +58,6 @@ class FidGUI(MPLGUI):
                              valmax=60,
                              valinit=30,
                              )
-        self.register_slider('p_level', self.update_p_level,
-                             forceint=True,
-                             label='Pyramid Level',
-                             valmin=0,
-                             valmax=7,
-                             valinit=4, )
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
@@ -126,8 +126,6 @@ class FidGUI(MPLGUI):
         self.refresh_plot()
 
     def update_filter_width(self, val):
-        if val == 0:
-            print('zero')
         self.recalculate_locations()
         self.refresh_plot()
 
