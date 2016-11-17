@@ -36,10 +36,10 @@ def display_pyramid(pyramid, cmap='gray'):
         axs = [axs]
     for im, ax in zip(pyramid, axs):
         ax.imshow(im, cmap=cmap)
-    plt.show()
+    plt.show(1)
 
 def make_log_pyramid(pyramid):
-    return [cv2.Laplacian(p, cv2.CV_32F) for p in pyramid]
+    return [cv2.Laplacian(p, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE) for p in pyramid]
 
 
 def make_dog_pyramid(pyramid, output_dtype=np.float32, intermediate_dtype=np.float32):
@@ -54,11 +54,17 @@ def make_dog(image, sigma_wide, sigma_narrow):
     if sigma_wide < sigma_narrow:
         sigma_wide, sigma_narrow = sigma_narrow, sigma_wide
     image = np.float32(image)
-    return cv2.GaussianBlur(image, (0, 0), sigma_wide) - cv2.GaussianBlur(image, (0, 0), sigma_narrow)
+    return (cv2.GaussianBlur(image, (0, 0), sigma_wide, borderType=cv2.BORDER_REPLICATE) -
+            cv2.GaussianBlur(image, (0, 0), sigma_narrow, borderType=cv2.BORDER_REPLICATE))
 
 
 def make_log(image, sigma):
-    cv2.Laplacian(cv2.GaussianBlur(image.astype(np.float32), (0, 0), sigma), cv2.CV_32F)
+    image = np.float32(image)
+    if sigma > 0:
+        blurredimage = cv2.GaussianBlur(np.float32(image), (0, 0), sigma, borderType=cv2.BORDER_REPLICATE)
+    else:
+        blurredimage = image
+    return cv2.Laplacian(blurredimage, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
 
 def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, elliptical=True):
     if threshold is None:
@@ -81,8 +87,7 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, elliptical
         neighborhood_array = image[rowslice, colslice]
         neighborhood_maxima = maxima[rowslice, colslice]
         n_shape = neighborhood_maxima.shape
-        max_index = np.unravel_index(np.argmax(neighborhood_array),
-                                             neighborhood_maxima.shape)
+        max_index = np.unravel_index(np.argmax(neighborhood_array), n_shape)
         if elliptical:
             footprint = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,n_shape[::-1],anchor=max_index[::-1]).view(bool)
         else:
