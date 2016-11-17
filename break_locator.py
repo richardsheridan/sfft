@@ -6,6 +6,7 @@ from os import path
 import cv2
 import numpy as np
 
+from cvutil import make_pyramid, make_log, peak_local_max
 from util import wavelet_filter, find_crossings, get_files, basename_without_stab, DISPLAY_SIZE
 from gui import MPLGUI
 
@@ -22,14 +23,15 @@ class BreakGUI(MPLGUI):
 
     def create_layout(self):
         import matplotlib.pyplot as plt
-        self.fig, (self.axes['image'], self.axes['profile']) = plt.subplots(2, 1, figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.3)
-        self.artists['profile'] = self.axes['profile'].plot(0)[0]
-        self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
+        self.fig, (self.axes['image'], self.axes['filtered']) = plt.subplots(2, 1, figsize=(8, 10))
+        # self.fig, self.axes['image'] = plt.subplots(1, 1, figsize=(8, 10))
+        self.fig.subplots_adjust(left=0.1, bottom=0.5)
+        # self.artists['profile'] = self.axes['profile'].plot(0)[0]
+        # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
+        # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
-        self.slider_coords = [.3, .20, .55, .03]
+        self.slider_coords = [.3, .40, .55, .03]
 
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
@@ -39,24 +41,31 @@ class BreakGUI(MPLGUI):
                              valmax=len(self.images) - 1,
                              valinit=0,
                              )
-        self.register_slider('slice_width', self.update_slice_width,
+        self.register_slider('p_level', self.update_p_level,
                              forceint=True,
-                             label='Slice Width',
+                             label='Pyramid Level',
                              valmin=0,
-                             valmax=200,
-                             valinit=50,
+                             valmax=7,
+                             valinit=3,
                              )
         self.register_slider('filter_width', self.update_filter_width,
                              label='Filter Width',
                              valmin=0,
-                             valmax=400,
-                             valinit=175,
+                             valmax=10,
+                             valinit=0.8,
                              )
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
                              valmax=100,
-                             valinit=25,
+                             valinit=30,
+                             )
+        self.register_slider('neighborhood', self.update_neighborhood,
+                             label='Neighborhood',
+                             forceint=True,
+                             valmin=1,
+                             valmax=100,
+                             valinit=10,
                              )
 
     def load_frame(self):
@@ -67,43 +76,46 @@ class BreakGUI(MPLGUI):
         from fiducial_locator import load_fids
         self.fids = load_fids(image_path, image, *self.fid_args)
 
-        ax = self.axes['image']
         self.image = image
-        ax.clear()
-        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_AREA), cmap='gray')
-        self.artists['image_breaks'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
-        ax.autoscale_view(tight=True)
+        self.pyramid = make_pyramid(image, 7)
 
     def recalculate_vision(self):
-        self.recalculate_profile()
+        self.recalculate_blobs()
         self.recalculate_locations()
 
-    def recalculate_profile(self):
-        self.profile = break_profile_from_image(self.image, self.sliders['slice_width'].val)
+    def recalculate_blobs(self):
+        image = self.pyramid[self.sliders['p_level'].val]
+        self.filtered_image = make_log(image, self.sliders['filter_width'].val)
 
     def recalculate_locations(self):
-        break_window = self.sliders['filter_width'].val
-        break_amp = self.sliders['cutoff'].val
-        break_profile = self.profile
-        self.filtered_profile = wavelet_filter(break_profile, break_window)
-        self.locations = np.array(choose_breaks(self.filtered_profile, break_amp, *self.fids))
+        image = self.filtered_image
+        rows, cols = image.shape
+        cutoff = self.sliders['cutoff'].val
+        neighborhood = self.sliders['neighborhood'].val
+
+        peaks = peak_local_max(image, cutoff, neighborhood)
+        row_index, col_index = np.where(peaks)
+        self.locations = row_index / rows, col_index / cols
         print(self.locations)
 
     def refresh_plot(self):
-        self.artists['image_breaks'].set_xdata(self.locations / len(self.profile) * DISPLAY_SIZE[0])
-        self.artists['image_breaks'].set_ydata(np.full_like(self.locations, DISPLAY_SIZE[1] / 2))
-        # TODO: indicate breaks in profile plot as well
+        ax = self.axes['image']
+        ax.clear()
+        ax.imshow(cv2.resize(self.pyramid[self.sliders['p_level'].val], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
+                  cmap='gray')  # TODO: use extent=[0,real_width,0,real_height] and aspect='auto'
+        ax.autoscale_view(tight=True)
+        self.artists['image_breaks'] = ax.plot(self.locations[1] * DISPLAY_SIZE[0],
+                                               self.locations[0] * DISPLAY_SIZE[1],
+                                               'rx', ms=10)[0]
 
-        self.artists['profile'].set_xdata(np.arange(len(self.filtered_profile)))
-        self.artists['profile'].set_ydata(self.filtered_profile)
-        self.artists['profile_breaks'].set_xdata(self.locations)
-        self.artists['profile_breaks'].set_ydata(self.filtered_profile[self.locations])
-        self.artists['cutoff'].set_xdata([0, len(self.profile)])
-        self.artists['cutoff'].set_ydata([self.sliders['cutoff'].val] * 2)
-
-        self.axes['profile'].relim()
-        self.axes['profile'].autoscale_view()
-
+        image = self.filtered_image
+        # TODO: add toggle to visualize threshold
+        # break_amp = self.sliders['cutoff'].val
+        # image = (image>break_amp).view(np.uint8)
+        ax = self.axes['filtered']
+        ax.clear()
+        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
+        ax.autoscale_view(tight=True)
         self.fig.canvas.draw()
 
     def execute_batch(self, event=None):
@@ -120,7 +132,7 @@ class BreakGUI(MPLGUI):
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_slice_width(self, val):
+    def update_p_level(self, val):
         self.recalculate_vision()
         self.refresh_plot()
 
@@ -129,37 +141,15 @@ class BreakGUI(MPLGUI):
         self.refresh_plot()
 
     def update_cutoff(self, val):
-        self.recalculate_vision()
+        self.recalculate_locations()
+        self.refresh_plot()
+
+    def update_neighborhood(self, val):
+        self.recalculate_locations()
         self.refresh_plot()
 
 
-def break_profile_from_image(image, width=200):
-    width = int(width)
-    rows, cols = image.shape
-    startrow = rows // 2 - width // 2
-    stoprow = startrow + width
-
-    fiber_profile = image[startrow:stoprow, :].mean(axis=0)
-
-    break_profile = 255.0 - fiber_profile
-    break_profile -= break_profile.mean()
-
-    return break_profile
-
-
-def choose_breaks(break_filtered, break_amp, left_limit, right_limit):
-    break_peaks = find_crossings(np.gradient(break_filtered))
-    break_peaks[:left_limit] = False
-    break_peaks[right_limit:] = False
-
-    break_peaks &= (break_filtered >= break_amp)
-
-    break_peaks = break_peaks.nonzero()[0]
-
-    return break_peaks
-
-
-def locate_breaks(image_path, slice_width, filter_width, cutoff, fid_args=(), stabilize_args=()):
+def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
     from fiber_locator import load_stab_tif
     image = load_stab_tif(image_path, stabilize_args)
@@ -167,15 +157,20 @@ def locate_breaks(image_path, slice_width, filter_width, cutoff, fid_args=(), st
     from fiducial_locator import load_fids
     fids = load_fids(image_path, image, fid_args)
 
-    break_profile = break_profile_from_image(image, slice_width)
-    filtered_break_profile = wavelet_filter(break_profile, filter_width)
-    breaks = choose_breaks(filtered_break_profile, cutoff, *fids)
-    rel_breaks = (breaks - fids[0]) / (fids[1] - fids[0])
-    return breaks, rel_breaks
+    pyramid = make_pyramid(image, p_level)
+    image = pyramid[p_level]
+    rows, cols = image.shape
+    filtered_image = make_log(image, filter_width)
+
+    peaks = peak_local_max(filtered_image, cutoff, neighborhood)
+    row_index, col_index = np.where(peaks)
+    locations = row_index / rows, col_index / cols
+    relative_locations = (locations[0] - fids[0]) / (fids[1] - fids[0]), locations[1]
+    return locations, relative_locations
 
 
-def batch_breaks(image_paths, slice_width, filter_width, cutoff, fid_args=(), stabilize_args=()):
-    args = (slice_width, filter_width, cutoff, fid_args, stabilize_args)
+def batch_breaks(image_paths, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
+    args = (p_level, filter_width, cutoff, neighborhood, fid_args, stabilize_args)
     args = repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
     freeze_support()
@@ -190,8 +185,8 @@ def save_breaks(parameters, breaks, images):
     fnames = basename_without_stab(images)
 
     headers = dict(parameters)
-    headers['fields'] = 'name: [locations, fid_relative]'
-    data = {fname: (locations, fid_relative) for fname, (locations, fid_relative) in zip(fnames, breaks)}
+    headers['fields'] = 'name: [locations, relative_locations]'
+    data = {fname: (locations, relative_locations) for fname, (locations, relative_locations) in zip(fnames, breaks)}
     output = [headers, data]
 
     print('Saving parameters and locations to:')
