@@ -33,6 +33,25 @@ def dumps(obj):
 def dump(obj, fp):
     fp.writelines(_default_encoder.iterencode(obj))
 
+def batch(function,image_paths, *args):
+    """
+    Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
+    :param function:
+    :param image_paths:
+    :param args:
+    :return:
+    """
+    from itertools import starmap, repeat
+    args = repeat(args)
+    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
+
+    # from multiprocessing import pool, freeze_support
+    # freeze_support()
+    # p = pool.Pool()
+    # starmap = p.starmap
+
+    return list(starmap(function, args))
+
 
 def get_files():
     """

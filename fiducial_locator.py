@@ -1,13 +1,12 @@
 from os import path
 
 import cv2
-from itertools import starmap as _map, repeat
 import numpy as np
 
 from cvutil import make_pyramid
-from util import wavelet_filter, find_crossings, get_files, basename_without_stab, PIXEL_SIZE_X, DISPLAY_SIZE
 from gui import MPLGUI
-from multiprocessing import pool, freeze_support
+from util import wavelet_filter, find_crossings, get_files, basename_without_stab, DISPLAY_SIZE, batch, \
+    find_grips
 
 
 FIDUCIAL_FILENAME = 'fiducials.json'
@@ -112,7 +111,7 @@ class FidGUI(MPLGUI):
 
     def execute_batch(self, event=None):
         parameters = self.parameters
-        locations = np.array(batch_fids(self.images, *parameters.values()))
+        locations = np.array(batch(locate_fids, self.images, *parameters.values()))
         left_fid, right_fid = locations[:, 0], locations[:, 1]
         if event is None:
             # called from command line without argument
@@ -186,17 +185,6 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
         raise NoPeakError(locals())
 
     return left_fid/l, right_fid/l
-
-
-def batch_fids(image_paths, filter_width, cutoff, p_level, stabilize_args=()):
-    args = filter_width, cutoff, p_level, stabilize_args
-    args = repeat(args)
-    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
-    locations = list(_map(locate_fids, args))
-    return locations
 
 
 def locate_fids(image, filter_width, cutoff, p_level, stabilize_args=()):

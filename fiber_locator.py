@@ -5,7 +5,7 @@ import cv2
 from itertools import starmap as _map, repeat
 import numpy as np
 
-from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
+from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
 from cvutil import make_pyramid, sobel_filter
 from gui import MPLGUI
 
@@ -28,7 +28,7 @@ class FiberGUI(MPLGUI):
 
         self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
-        self.register_button('type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
+        self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
                              labels=('original', 'filtered', 'edges', 'rotated'))
         # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
         #                      labels=('sobel', 'laplace'))
@@ -186,7 +186,7 @@ class FiberGUI(MPLGUI):
         return_image = False
         save_image = True
         images = self.images
-        x = batch_stabilize(images, threshold, p_level, return_image, save_image)
+        x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
         save_stab(images, x, threshold, p_level)
 
     def update_frame_number(self, val):
@@ -312,22 +312,6 @@ def rotate_fiber(image, vshift, theta):
 
 def _compose(a, b):
     return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]
-
-
-def batch_stabilize(image_paths, threshold, p_level,):
-    """
-    Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
-    :param image_paths:
-    :param args:
-    :return:
-    """
-    args = threshold, p_level,
-    args = repeat(args)
-    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
-    return list(_map(stabilize_file, args))
 
 
 def load_stab_data(stabilized_image_path):
