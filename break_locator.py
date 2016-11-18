@@ -18,20 +18,24 @@ class BreakGUI(MPLGUI):
         self.images = images
         self.stabilize_args = stabilize_args
         self.fid_args = fid_args
+        self.display_type = 'filtered'
 
         super().__init__()
 
     def create_layout(self):
         import matplotlib.pyplot as plt
         self.fig, (self.axes['image'], self.axes['filtered']) = plt.subplots(2, 1, figsize=(8, 10))
+        from matplotlib.widgets import RadioButtons
         # self.fig, self.axes['image'] = plt.subplots(1, 1, figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.5)
+        self.fig.subplots_adjust(left=0.1, bottom=0.4)
         # self.artists['profile'] = self.axes['profile'].plot(0)[0]
         # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
-        self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
+        self.register_button('save', self.execute_batch, [.3, .95, .2, .03], label='Save batch')
+        self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget=RadioButtons,
+                             labels=('filtered', 'thresholded',))
 
-        self.slider_coords = [.3, .40, .55, .03]
+        self.slider_coords = [.3, .30, .55, .03]
 
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
@@ -109,9 +113,9 @@ class BreakGUI(MPLGUI):
                                                'rx', ms=10)[0]
 
         image = self.filtered_image
-        # TODO: add toggle to visualize threshold
-        # break_amp = self.sliders['cutoff'].val
-        # image = (image>break_amp).view(np.uint8)
+        if self.display_type == 'thresholded':
+            break_amp = self.sliders['cutoff'].val
+            image = (image > break_amp).view(np.uint8)
         ax = self.axes['filtered']
         ax.clear()
         ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
@@ -146,6 +150,11 @@ class BreakGUI(MPLGUI):
 
     def update_neighborhood(self, val):
         self.recalculate_locations()
+        self.refresh_plot()
+
+    def set_display_type(self, label):
+        self.display_type = label
+
         self.refresh_plot()
 
 
