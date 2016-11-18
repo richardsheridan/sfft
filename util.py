@@ -136,6 +136,22 @@ def find_crossings(smooth_series, slope_cutoff=None):
 
     return candidate_crossings
 
+def find_grips(smooth_series):
+    l = len(smooth_series)
+    kernel = np.gradient(gaussian(l//50,l/500))
+    slope = convolve(smooth_series,kernel,'same')
+
+    for i, val in enumerate(slope):
+        if val < 0:
+            left_grip = i
+            break
+
+    for i, val in enumerate(slope[::-1]):
+        if val > 0:
+            right_grip = i
+            break
+
+    return left_grip, right_grip
 
 def path_with_stab(path):
     dirname, filename = os.path.split(path)

@@ -76,10 +76,12 @@ class FidGUI(MPLGUI):
         fid_window = self.sliders['filter_width'].val
         fid_amp = self.sliders['cutoff'].val
         fid_profile = self.profile
-        self.filtered_profile = np.empty_like(fid_profile, float)
+        fid_window = fid_window * len(fid_profile)
+        # TODO new script to find grips and import those values
+        left_grip_index, right_grip_index = find_grips(fid_profile)
+        self.filtered_profile = filtered_profile = wavelet_filter(fid_profile, fid_window)
         try:
-            # NOTE: this overwrites self.filtered_profile with the actual filtered profile
-            self.locations = np.array(choose_fids(fid_profile, fid_window, fid_amp, self.filtered_profile))
+            self.locations = np.array(choose_fids(filtered_profile, fid_amp, left_grip_index))
         except NoPeakError:
             print('no peaks found')
             self.locations = np.array([np.nan, np.nan])
@@ -148,22 +150,10 @@ def fid_profile_from_image(image):
     return fiducial_profile
 
 
-def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
-    if filtered_profile is None:
-        # WTF is this? I needed a way to get the filtered profile out for the GUI
-        # without making other workflows more complicated. So we only make a
-        # new array when we know we don't have one to mutate from elsewhere.
-        filtered_profile = np.empty_like(fid_profile, float)
-    fid_window = fid_window*len(fid_profile)
-    filtered_profile[:] = wavelet_filter(fid_profile, fid_window)
+def choose_fids(filtered_profile, fid_amp, mask_until):
     l = len(filtered_profile)
-    # only start looking after first zero
-    for i, value in enumerate(fid_profile):
-        if value <= 0:
-            mask_until = i
-            break
-    else:
-        raise NoPeakError('Unfiltered profile never crosses zero!')
+    # only start looking after heuristic starting point
+    # mask_until = int(.06 * l)
 
     end_mask = np.ones_like(filtered_profile, bool)
     end_mask[:mask_until] = False
@@ -175,19 +165,19 @@ def choose_fids(fid_profile, fid_window, fid_amp, filtered_profile=None):
     try:
         left_fid = fid_ind[0]
     except IndexError:
-        raise NoPeakError
+        raise NoPeakError('No peaks found!')
 
     for i in fid_ind:
         if i - left_fid > 0.64 * l:
             right_fid = i
             break
     else:
-        raise NoPeakError(locals())
+        raise NoPeakError('No right fiducial?', locals())
 
     return left_fid/l, right_fid/l
 
 
-def locate_fids(image, filter_width, cutoff, p_level, stabilize_args=()):
+def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
     if isinstance(image, str):  # TODO: more robust dispatch
         print('Processing: ' + path.basename(image))
         from fiber_locator import load_stab_tif
@@ -199,7 +189,10 @@ def locate_fids(image, filter_width, cutoff, p_level, stabilize_args=()):
         raise ValueError('Unknown type', type(image))
 
     profile = fid_profile_from_image(pyramid[p_level])
-    return choose_fids(profile, filter_width, cutoff)
+    filter_width = filter_width * len(profile)
+    profile = wavelet_filter(profile, filter_width)
+    left_grip_index, right_grip_index = find_grips(profile)
+    return choose_fids(profile, cutoff, left_grip_index)
 
 
 class NoPeakError(Exception):
@@ -269,5 +262,5 @@ def save_fids(parameters, images, left_fids, right_fids):
 
 
 if __name__ == '__main__':
-    a = FidGUI(get_files())  # , (274,))
+    # a = FidGUI(get_files())
     # a = batch_fids(get_files(), 7000, 1000)
