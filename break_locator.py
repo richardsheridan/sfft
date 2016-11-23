@@ -217,18 +217,60 @@ def load_breaks(directory):
     return breaks
 
 if __name__ == '__main__':
-
     a = BreakGUI(get_files(), )
 
+
     # import cProfile, pstats, io
+    #
     # prof = cProfile.Profile()
+    # # images = get_files()
+    # images = ('c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str000.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str01d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str02d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str03d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str04d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str05d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str06d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str07d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str08d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str09d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str10d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str11d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str12d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str13d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str14d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str15d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str16d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str17d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str18d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str19d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str20d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str21d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str22d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str23d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str24d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str25d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str26d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str27d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str28d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str29d.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdi_at_745_am.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_1_t.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_2.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_3.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_4_s.jpg',
+    #           'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_5_b.jpg')
+    #
+    #
+    # parameters = dict(
+    #     [('p_level', 2), ('filter_width', 2.4621212121212119), ('cutoff', 5.1136363636363669), ('neighborhood', 34)])
+    #     # [('p_level', 0), ('filter_width', 9.6117424242424239), ('cutoff', 0.37878787878788245), ('neighborhood', 54)])
+    #
     # prof.enable()
-
-    # a = batch_breaks(get_files(), 102, 330, 296)#, fid_args=(7000, 1000), )
-
+    # a = batch_breaks(images, **parameters)  # , fid_args=(7000, 1000),
     # prof.disable()
     # s = io.StringIO()
-    # sortby = 'cumulative'
+    # sortby = 'tottime'
     # ps = pstats.Stats(prof, stream=s).sort_stats(sortby)
     # ps.print_stats()
     # print(s.getvalue())

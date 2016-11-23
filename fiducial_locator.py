@@ -264,3 +264,48 @@ def save_fids(parameters, images, left_fids, right_fids):
 if __name__ == '__main__':
     # a = FidGUI(get_files())
     # a = batch_fids(get_files(), 7000, 1000)
+
+
+    import cProfile, pstats, io
+
+    prof = cProfile.Profile()
+    # images = get_files()
+    images = ['c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str000.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str01d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str02d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str03d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str04d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str05d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str06d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str07d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str08d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str09d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str10d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str11d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str12d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str13d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str14d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str15d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str16d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str17d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str18d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str19d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str20d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str21d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str22d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str23d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str24d.jpg',
+              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_tdiz.jpg']
+
+    from collections import OrderedDict
+
+    parameters = OrderedDict([('p_level', 4), ('filter_width', 0.010937500000000003), ('cutoff', 8.8636363636363669)])
+    prof.enable()
+    a = batch(locate_fids, images, *parameters.values())
+    # a = FidGUI(images)
+    prof.disable()
+    s = io.StringIO()
+    sortby = 'tottime'
+    ps = pstats.Stats(prof, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print(s.getvalue())
