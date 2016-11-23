@@ -105,11 +105,14 @@ class BreakGUI(MPLGUI):
     def refresh_plot(self):
         ax = self.axes['image']
         ax.clear()
-        ax.imshow(cv2.resize(self.pyramid[self.sliders['p_level'].val], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
-                  cmap='gray')  # TODO: use extent=[0,real_width,0,real_height] and aspect='auto'
-        ax.autoscale_view(tight=True)
-        self.artists['image_breaks'] = ax.plot(self.locations[1] * DISPLAY_SIZE[0],
-                                               self.locations[0] * DISPLAY_SIZE[1],
+        # ax.imshow(cv2.resize(self.pyramid[self.sliders['p_level'].val], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
+        ax.imshow(self.pyramid[self.sliders['p_level'].val],
+                  cmap='gray',
+                  extent=[0, 1, 1, 0],
+                  aspect='auto',
+                  )  # TODO: use extent=[0,real_width,0,real_height] and aspect='auto'
+        self.artists['image_breaks'] = ax.plot(self.locations[1],  # * DISPLAY_SIZE[0],
+                                               self.locations[0],  # * DISPLAY_SIZE[1],
                                                'rx', ms=10)[0]
 
         image = self.filtered_image
@@ -118,8 +121,12 @@ class BreakGUI(MPLGUI):
             image = (image > break_amp).view(np.uint8)
         ax = self.axes['filtered']
         ax.clear()
-        ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
-        ax.autoscale_view(tight=True)
+        # ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
+        ax.imshow(image,
+                  cmap='gray',
+                  extent=[0, 1, 1, 0],
+                  aspect='auto',
+                  )
         self.fig.canvas.draw()
 
     def execute_batch(self, event=None):
