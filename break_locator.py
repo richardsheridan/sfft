@@ -1,13 +1,12 @@
 import json
 from itertools import starmap as _map, repeat
-from multiprocessing import freeze_support, pool
 from os import path
 
 import numpy as np
 
 from cvutil import make_pyramid, make_log
 from gui import MPLGUI
-from util import basename_without_stab, peak_local_max
+from util import basename_without_stab, peak_local_max, batch, get_files
 
 BREAK_FILENAME = 'breaks.json'
 
@@ -129,7 +128,7 @@ class BreakGUI(MPLGUI):
 
     def execute_batch(self, event=None):
         parameters = self.parameters
-        breaks = batch_breaks(self.images, *parameters.values())
+        breaks = batch(locate_breaks,self.images, *parameters.values())
         if event is None:
             # called from command line without argument
             return breaks
@@ -180,17 +179,6 @@ def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_a
     locations = row_index / rows, col_index / cols
     relative_locations = (locations[0] - fids[0]) / (fids[1] - fids[0]), locations[1]
     return locations, relative_locations
-
-
-def batch_breaks(image_paths, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
-    args = (p_level, filter_width, cutoff, neighborhood, fid_args, stabilize_args)
-    args = repeat(args)
-    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
-    locations = list(_map(locate_breaks, args))
-    return locations
 
 
 def save_breaks(parameters, breaks, images):
@@ -265,11 +253,11 @@ if __name__ == '__main__':
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_4_s.jpg',
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_5_b.jpg')
 
-
-    parameters = dict([('p_level', 3), ('filter_width', 1.2215909090909101), ('cutoff', 19.602272727272741), ('neighborhood', 10)])
+    from collections import OrderedDict
+    parameters = OrderedDict([('p_level', 3), ('filter_width', 1.2215909090909101), ('cutoff', 19.602272727272741), ('neighborhood', 10)])
 
     prof.enable()
-    a = batch_breaks(images, **parameters)  # , fid_args=(7000, 1000),
+    a = batch(locate_breaks,images, *parameters.values())  # , fid_args=(7000, 1000),
     prof.disable()
     s = io.StringIO()
     sortby = 'tottime'
