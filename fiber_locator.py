@@ -2,23 +2,21 @@ from os import path
 from multiprocessing import pool, freeze_support
 
 import cv2
-import itertools
+from itertools import starmap as _map, repeat
 import numpy as np
 
-from util import get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y
+from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
+from cvutil import make_pyramid, sobel_filter
 from gui import MPLGUI
 
 
-_map = itertools.starmap
 
 STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(MPLGUI):
-    def __init__(self, images, downsample=()):
+    def __init__(self, images):
         self.images = images
-        self.downsample = downsample
-        self.display_original = True
-        self.display_rotated = False
+        self.display_type = 'original'
 
         super().__init__()
 
@@ -26,13 +24,16 @@ class FiberGUI(MPLGUI):
         import matplotlib.pyplot as plt
         from matplotlib.widgets import RadioButtons
         self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.5)
+        self.fig.subplots_adjust(left=0.1, bottom=0.3)
 
         self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
-        self.register_button('type', self.display_type, [.6, .9, .2, .1], widget=RadioButtons, labels=('original', 'edges', 'rotated'))
+        self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
+                             labels=('original', 'filtered', 'edges', 'rotated'))
+        # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
+        #                      labels=('sobel', 'laplace'))
 
-        self.slider_coords =[.3, .4, .55, .03 ]
+        self.slider_coords = [.3, .25, .55, .03]
         self.register_slider('frame_number',self.update_frame_number,
                              isparameter=False,
                              forceint=True,
@@ -46,10 +47,30 @@ class FiberGUI(MPLGUI):
                              valmax=2 ** 9 - 1,
                              valinit=70,
                              )
+        self.register_slider('p_level', self.update_edge,
+                             forceint=True,
+                             label='Pyramid Level',
+                             valmin=0,
+                             valmax=7,
+                             valinit=0, )
+        # self.register_slider('ksize', self.update_edge,
+        #                      forceint=True,
+        #                      label='Kernel size',
+        #                      valmin=0,
+        #                      valmax=5,
+        #                      valinit=0, )
+        # self.register_slider('iter', self.update_edge,
+        #                      forceint=True,
+        #                      label='morph. iterations',
+        #                      valmin=0,
+        #                      valmax=5,
+        #                      valinit=0, )
+
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
-        self.tdi_array = _load_tdi_corrected(image_path, self.downsample)
+        self.tdi_array = image = _load_tdi_corrected(image_path)
+        self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
         self.recalculate_edges()
@@ -57,7 +78,10 @@ class FiberGUI(MPLGUI):
 
     def recalculate_edges(self):
         threshold = self.sliders['threshold'].val
-        self.edges = sobel_edges(self.tdi_array, threshold)
+        p_level = self.sliders['p_level'].val
+        image = self.pyramid[p_level]
+        self.filtered = image = sobel_filter(image)
+        self.edges = edges(image, threshold)
 
     def recalculate_lines(self):
         processed_image_array = self.edges
@@ -68,7 +92,10 @@ class FiberGUI(MPLGUI):
 
         self.vshift = _vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
 
-    def draw_line(self, image_array, color=255, thickness=4):
+        self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
+        self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
+
+    def draw_line(self, image_array, color=255, thickness=2):
         x_size = image_array.shape[1]
         max_chunk = 2 ** 14
         chunks = x_size // max_chunk
@@ -103,19 +130,30 @@ class FiberGUI(MPLGUI):
 
     def refresh_plot(self):
         self.axes['image'].clear()
-
-        if self.display_original:
+        label = self.display_type
+        if label == 'original':
             image = self.tdi_array.copy()
-            if self.display_rotated:
-                image = rotate_fiber(image, self.vshift, self.theta)
-            else:
-                image = self.draw_line(image, 0)
-        else:
-            image = self.edges * 255
-            image = self.draw_line(image, 255)
+            image = self.draw_line(image, 0)
+        elif label == 'filtered':
+            image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
+            for i in reversed(range(self.sliders['p_level'].val)):
+                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
 
-        self.display_image_array = image.copy()
-        image = cv2.resize(image, (800, 453), interpolation=cv2.INTER_AREA)
+            image = self.draw_line(image, float(image.max()))
+        elif label == 'edges':
+            image = self.edges * 255
+            for i in reversed(range(self.sliders['p_level'].val)):
+                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+            image = self.draw_line(image, 255)
+        elif label == 'rotated':
+            image = self.tdi_array.copy()
+            image = rotate_fiber(image, self.vshift, self.theta)
+        else:
+            print('unknown display type:', label)
+            return
+
+        self.display_image_array = image  # .astype('uint8')
+        image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
         self.axes['image'].imshow(image, cmap='gray')
         self.fig.canvas.draw()
 
@@ -125,30 +163,31 @@ class FiberGUI(MPLGUI):
         key = cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    def display_type(self, label):
-        ('original', 'edges', 'rotated')
-        if label == 'original':
-            self.display_original = True
-            self.display_rotated = False
-        elif label == 'edges':
-            self.display_original = False
-            self.display_rotated = False
-        elif label == 'rotated':
-            self.display_original = True
-            self.display_rotated = True
-        else:
-            print('unknown display type:', label)
-            return
+    def set_display_type(self, label):
+        self.display_type = label
 
         self.refresh_plot()
 
+    # def edge_type(self, label):
+    #
+    #     if label == 'sobel':
+    #         self.filter_fun = sobel_filter
+    #     elif label == 'laplace':
+    #         self.filter_fun = laplacian_filter
+    #     else:
+    #         print('unknown edge type:', label)
+    #         return
+    #
+    #     self.recalculate_vision()
+    #     self.refresh_plot()
+
     def execute_batch(self, event):
-        threshold, = self.parameters.values()
+        threshold, p_level = self.parameters.values()
         return_image = False
         save_image = True
         images = self.images
-        x = batch_stabilize(images, threshold, return_image, save_image)
-        save_stab(images, x, threshold)
+        x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
+        save_stab(images, x, threshold, p_level)
 
     def update_frame_number(self, val):
         self.load_frame()
@@ -159,9 +198,6 @@ class FiberGUI(MPLGUI):
 
         self.recalculate_vision()
         self.refresh_plot()
-
-    def update_open_close(self, val):
-        self.update_edge(val)
 
 
 
@@ -177,20 +213,17 @@ def _vshift_from_si_shape(slope, intercept, shape):
     return shape[0] // 2 - y_middle
 
 
-def _load_tdi_corrected(image_path, downsample=None):
+def _load_tdi_corrected(image_path):
     tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
-    if downsample and len(downsample) == 2 and downsample > (2, 2):
-        x, y = downsample
-    else:
-        y, x = tdi_array.shape
-        y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
-        # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
+    y, x = tdi_array.shape
+    y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
+    # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
 
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
-    tdi_array = clahe.apply(tdi_array)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
+    # tdi_array = clahe.apply(tdi_array)
 
-    tdi_array = cv2.resize(tdi_array, dsize=(x, y,), interpolation=cv2.INTER_AREA)
+    tdi_array = cv2.resize(tdi_array, dsize=(x, y), interpolation=cv2.INTER_CUBIC)
 
     return tdi_array
 
@@ -233,13 +266,13 @@ def fit_line_fitline(processed_image_array):
     return slope, intercept, theta
 
 
-def sobel_edges(image_array, threshold):
-    dy = cv2.Sobel(image_array, cv2.CV_16S, 0, 1, ksize=3)
-    edges = (dy > threshold).view('uint8')
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
-    edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
+def edges(filtered_image, threshold, iterations=0):
+    edges = (filtered_image > threshold).view('uint8')
 
+    if iterations:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=iterations)
+        # edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
     return edges
 
 
@@ -297,21 +330,6 @@ def _compose(a, b):
     return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]
 
 
-def batch_stabilize(image_paths, *args):
-    """
-    Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
-    :param image_paths:
-    :param args:
-    :return:
-    """
-    args = tuple(itertools.repeat(args, len(image_paths)))
-    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
-    freeze_support()
-    p = pool.Pool()
-    _map = p.starmap
-    return _map(stabilize_file, args)
-
-
 def load_stab_data(stabilized_image_path):
     dirname, basename = path.split(stabilized_image_path)
     datfile = path.join(dirname, STABILIZE_FILENAME)
@@ -336,12 +354,15 @@ def load_stab_tif(image_path, *stabilize_args):
     return image
 
 
-def stabilize_file(image_path, threshold, return_image=False, save_image=False):
+def stabilize_file(image_path, threshold, p_level, return_image=False, save_image=False):
     dir, fname = path.split(image_path)
     print('Loading:', fname)
     image = _load_tdi_corrected(image_path)
-    edges = sobel_edges(image, threshold)
-    slope, intercept, theta = fit_line_moments(edges)
+    pyramid = make_pyramid(image, p_level)
+    edgeimage = sobel_filter(pyramid[p_level])
+    edgeimage = edges(edgeimage, threshold)
+    slope, intercept, theta = fit_line_moments(edgeimage)
+    intercept = intercept / edgeimage.shape[0] * image.shape[0]
     vshift = _vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta)
@@ -354,7 +375,7 @@ def stabilize_file(image_path, threshold, return_image=False, save_image=False):
     return vshift, theta
 
 
-def save_stab(image_paths, batch, threshold):
+def save_stab(image_paths, batch, threshold, p_level):
     data = {path.basename(image_path).lower(): (vshift, theta)
             for image_path, (vshift, theta) in zip(image_paths, batch)}
     for image_path, (vshift, theta) in zip(image_paths, batch):
@@ -362,6 +383,7 @@ def save_stab(image_paths, batch, threshold):
         data[fname] = vshift, theta
 
     header = {'threshold': threshold,
+              'p_level': p_level,
               'fields:': 'name: [vshift, theta]',
               }
 
