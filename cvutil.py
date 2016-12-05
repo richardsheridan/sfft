@@ -66,32 +66,12 @@ def make_log(image, sigma):
         blurredimage = image
     return cv2.Laplacian(blurredimage, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
 
-def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, elliptical=True):
-    if threshold is None:
-        maxima = np.ones_like(image, bool)
-    elif isinstance(threshold, Number):
-        maxima = image > threshold
+
+def max_filter(image, neighborhood=1, elliptical=True):
+    if elliptical:
+        footprint = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * neighborhood + 1, 2 * neighborhood + 1))
     else:
-        maxima = np.asanyarray(threshold, bool)
+        footprint = cv2.getStructuringElement(cv2.MORPH_RECT, (2 * neighborhood + 1, 2 * neighborhood + 1))
 
-    rows, cols = image.shape
+    return cv2.dilate(image, footprint, borderType=cv2.BORDER_REPLICATE)
 
-    n = neighborhood
-    for candidate in zip(*np.where(maxima)):
-        if not maxima[candidate]:
-            continue
-
-        r, c = candidate
-        rowslice = slice(max(r - n, 0), min(r + n + 1, rows))
-        colslice = slice(max(c - n, 0), min(c + n + 1, cols))
-        neighborhood_array = image[rowslice, colslice]
-        neighborhood_maxima = maxima[rowslice, colslice]
-        n_shape = neighborhood_maxima.shape
-        max_index = np.unravel_index(np.argmax(neighborhood_array), n_shape)
-        if elliptical:
-            footprint = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,n_shape[::-1],anchor=max_index[::-1]).view(bool)
-        else:
-            footprint = slice(None)
-        neighborhood_maxima[footprint] = False  # there can be only one
-        neighborhood_maxima[max_index] = True  # Highlander!
-    return maxima

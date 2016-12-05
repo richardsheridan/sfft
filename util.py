@@ -228,3 +228,91 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
         return stress[np.searchsorted(time, time_at_max_stress + stress_type)], label
 
     raise ValueError('Could not interpret stress type: ' + str(stress_type))
+
+def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, subpixel=1):
+    if threshold is None:
+        maxima = np.ones_like(image, bool)
+    elif isinstance(threshold, Number):
+        maxima = image > threshold
+    else:
+        maxima = np.array(threshold, bool)
+
+    # Technically this could replace all the following logic, but it is slower because it works on each pixel
+    # maxima &= (image ==  max_filter(image, neighborhood, elliptical))
+    # if border:
+    #     maxima[:border] = False
+    #     maxima[-border:] = False
+    #     maxima.T[:border] = False
+    #     maxima.T[-border:] = False
+
+    rows, cols = image.shape
+    max_indices = []
+    for candidate in zip(*np.where(maxima)): # This call to np.where is the bottleneck for large images
+        # If we have eliminated a candidate in a previous iteration, we can skip ahead
+        if not maxima[candidate]:
+            continue
+
+        r, c = candidate
+        r0, r1 = max(r - neighborhood, 0), min(r + neighborhood + 1, rows)
+        c0, c1 = max(c - neighborhood, 0), min(c + neighborhood + 1, cols)
+
+        # Wipe all maximum candidates in the neighborhood so we don't check others later
+        maxima[r0:r1, c0:c1] = False
+
+        # Locate the actual maximum of the neighborhood
+        neighborhood_array = image[r0:r1, c0:c1]
+        max_index = rm, cm = np.unravel_index(np.argmax(neighborhood_array), neighborhood_array.shape)
+
+        # Shift max_index to image coordinates
+        max_index = rm, cm = rm+r0, cm+c0
+
+        # Drop any "maxima" near the border of the image, which are by and large false positives
+        if border < rm < rows-border and border < cm < cols-border:
+            maxima[max_index] = True
+            if subpixel:
+                max_index = quadratic_subpixel_maximum(image,max_index)
+            max_indices.append(max_index)
+
+    # Emulate np.where behavior for empty max_indices with this special conditional expression
+    return np.transpose(max_indices) if max_indices else (np.array([], dtype=int), np.array([], dtype=int))
+
+
+def quadratic_subpixel_maximum(image, max_index):
+    # Image and Vision Computing, vol.20, no.13/14, pp.981-991, December 2002.
+    # http://vision-cdc.csiro.au/changs/doc/sun02ivc.pdf
+    y, x = max_index
+
+    # optimization: grab the image pixel values as python floats in local variables
+    image_item = image.item
+    bmm = image_item((y - 1, x - 1))
+    b0m = image_item((y - 1, x))
+    bpm = image_item((y - 1, x + 1))
+    bm0 = image_item((y, x - 1))
+    b00 = image_item((y, x))
+    bp0 = image_item((y, x + 1))
+    bmp = image_item((y + 1, x - 1))
+    b0p = image_item((y + 1, x))
+    bpp = image_item((y + 1, x + 1))
+
+    # estimate the coefficients of G(x,y)=Axx+Bxy+Cyy+Dx+Ey+F by finite difference
+    # the coordinate system origin is implicitly shifted to (x,y) from max_index
+    A = (bmm - 2.0 * b0m + bpm + bm0 - 2.0 * b00 + bp0 + bmp - 2.0 * b0p + bpp) / 6.0
+    B = (bmm - bpm - bmp + bpp) / 4.0
+    C = (bmm + b0m + bpm - 2.0 * bm0 - 2.0 * b00 - 2.0 * bp0 + bmp + b0p + bpp) / 6.0
+    D = (-bmm + bpm - bm0 + bp0 - bmp + bpp) / 6.0
+    E = (-bmm - b0m - bpm + bmp + b0p + bpp) / 6.0
+    # F = (-bmm + 2.0 * b0m - bpm + 2.0 * bm0 + 5.0 * b00 + 2.0 * bp0 - bmp + 2.0 * b0p - bpp) / 9.0
+
+    # Solve the system Gx(x,y) = 0, Gy(x,y) = 0 for the quadratic maximum
+    denominator = (4.0 * A * C - B * B)
+    if denominator > 0.0: # eliminate saddles or divide by zero problems
+        subpixel_x = (B * E - 2.0 * C * D) / denominator
+        subpixel_y = (B * D - 2.0 * A * E) / denominator
+
+    # check for badly behaved estimates, possibly due to noise?
+    if denominator > 0.0 and -1.0 < subpixel_x < 1.0 and -1.0 < subpixel_y < 1.0:
+        # subpx_max_val = A * subpixel_x ** 2 + B * subpixel_y * subpixel_x + C * subpixel_y ** 2 + \
+        #                 D * subpixel_x + E * subpixel_y + F
+        return y + subpixel_y, x + subpixel_x,  # subpx_max_val
+    else:
+        return y, x, # b00
