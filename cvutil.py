@@ -16,6 +16,7 @@ def laplacian_filter(image_array, ksize=1):
     log[-1, :] = 0
     return log
 
+
 def make_pyramid(image, levels=7):
     pyramid = [image]
     x = image
@@ -24,10 +25,13 @@ def make_pyramid(image, levels=7):
         pyramid.append(x)
     return pyramid
 
+
 def puff_pyramid(pyramid, level, tolevel=0, image=None):
     image = pyramid[level].copy() if image is None else image.copy()
-    for i in reversed(range(tolevel,level)):
+    for i in reversed(range(tolevel, level)):
         image = cv2.pyrUp(image, dstsize=pyramid[i].shape[::-1])
+    return image
+
 
 def display_pyramid(pyramid, cmap='gray'):
     import matplotlib.pyplot as plt
@@ -37,6 +41,7 @@ def display_pyramid(pyramid, cmap='gray'):
     for im, ax in zip(pyramid, axs):
         ax.imshow(im, cmap=cmap)
     plt.show(1)
+
 
 def make_log_pyramid(pyramid):
     return [cv2.Laplacian(p, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE) for p in pyramid]
