@@ -154,15 +154,16 @@ def basename_without_stab(images):
     return [x[len(STABILIZE_PREFIX):] if x.startswith(STABILIZE_PREFIX) else x for x in name_gen]
 
 
-def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
-    if os.path.isdir(straindatpath):
-        straindatpath = os.path.join(straindatpath, 'STRAIN.DAT')
+def parse_strain_headers(straindatpath):
+    straindatpath = normalize_straindatpath(straindatpath)
     with open(straindatpath) as f:
         for i, line in enumerate(f):
             if i == 0 and not line.startswith(r'C:\IFSS'):
                 raise ValueError('Not a proper IFSS strain file')
             if i == 2:
                 label = line
+            elif i == 8:
+                tdi_length = float(line.split()[0])
             elif i == 13:
                 width = float(line.split()[0])
             elif i == 14:
@@ -170,17 +171,36 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
             elif i == 16:
                 fid_estimate = float(line.split()[0])
                 break
+    return label, tdi_length, width, thickness, fid_estimate
+
+
+def parse_strain_columns(straindatpath):
+    straindatpath = normalize_straindatpath(straindatpath)
     extension, force, time, s_or_d, cycle = np.loadtxt(straindatpath,
                                                        skiprows=28,
                                                        usecols=(0, 1, 2, 3, 4),
-                                                       dtype=[('ex', float),
-                                                              ('f', float),
-                                                              ('t', float),
+                                                       dtype=[('ex', 'float'),
+                                                              ('f', 'float'),
+                                                              ('t', 'float'),
                                                               ('sd', '<S6'),
-                                                              ('c', int),
+                                                              ('c', 'int64'),
                                                               ],
                                                        unpack=True,
                                                        )
+    return extension, force, time, s_or_d, cycle
+
+
+def normalize_straindatpath(straindatpath):
+    if os.path.isdir(straindatpath):
+        straindatpath = os.path.join(straindatpath, 'STRAIN.DAT')
+    return straindatpath
+
+
+def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
+    straindatpath = normalize_straindatpath(straindatpath)
+
+    label, tdi_length, width, thickness, fid_estimate = parse_strain_headers(straindatpath)
+    extension, force, time, s_or_d, cycle = parse_strain_columns(straindatpath)
     stress = force / (width * thickness)
 
     if max_cycle is not None:
@@ -211,10 +231,11 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
 
         return stress, (before_tdi, after_tdi, max_stress, tensec, eightmin), label
 
-    if issubclass(stress_type, Int):
+    if issubclass(stress_type, Number):
         return stress[np.searchsorted(time, time_at_max_stress + stress_type)], label
 
     raise ValueError('Could not interpret stress type: ' + str(stress_type))
+
 
 def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, subpixel=1):
     if threshold is None:
