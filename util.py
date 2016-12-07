@@ -12,6 +12,7 @@ DISPLAY_SIZE = (1200, 450)
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
 
+
 class NdarrayEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -33,7 +34,8 @@ def dumps(obj):
 def dump(obj, fp):
     fp.writelines(_default_encoder.iterencode(obj))
 
-def batch(function,image_paths, *args):
+
+def batch(function, image_paths, *args):
     """
     Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
     :param function:
@@ -106,11 +108,11 @@ def cwt(data, wavelet, widths):
 def wavelet_filter(series, sigma, bandwidth=None):
     window_size = int(sigma * 9)
     if window_size <= 3:
-        window_array = np.array((-1.0,2.0,-1.0))
+        window_array = np.array((-1.0, 2.0, -1.0))
     elif window_size <= 5:
-        window_array = np.array((-1.0,16.0,-30.0,16.0,-1.0))
+        window_array = np.array((-1.0, 16.0, -30.0, 16.0, -1.0))
     elif window_size <= 7:
-        window_array = np.array((2.0,-27.0,270.0,-490.0,270.0,-27.0,2.0))
+        window_array = np.array((2.0, -27.0, 270.0, -490.0, 270.0, -27.0, 2.0))
     elif bandwidth is None or bandwidth <= 0:
         window_array = ricker(window_size, sigma)
     else:
@@ -120,7 +122,7 @@ def wavelet_filter(series, sigma, bandwidth=None):
         wide_window /= wide_window.sum()
         window_array = narrow_window - wide_window
 
-    window_array /= np.abs(window_array).sum()
+    window_array /= np.abs(window_array).sum()  # this keeps the values of the smoothed array stable wrt window
     smoothed = convolve(series, window_array, 'same')
     return smoothed
 
@@ -255,7 +257,7 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
 
     rows, cols = image.shape
     max_indices = []
-    for candidate in zip(*np.where(maxima)): # This call to np.where is the bottleneck for large images
+    for candidate in zip(*np.where(maxima)):  # This call to np.where is the bottleneck for large images
         # If we have eliminated a candidate in a previous iteration, we can skip ahead
         if not maxima[candidate]:
             continue
@@ -272,13 +274,13 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
         max_index = rm, cm = np.unravel_index(np.argmax(neighborhood_array), neighborhood_array.shape)
 
         # Shift max_index to image coordinates
-        max_index = rm, cm = rm+r0, cm+c0
+        max_index = rm, cm = rm + r0, cm + c0
 
         # Drop any "maxima" near the border of the image, which are by and large false positives
-        if border < rm < rows-border and border < cm < cols-border:
+        if border < rm < rows - border and border < cm < cols - border:
             maxima[max_index] = True
             if subpixel:
-                max_index = quadratic_subpixel_maximum(image,max_index)
+                max_index = quadratic_subpixel_maximum(image, max_index)
             max_indices.append(max_index)
 
     # Emulate np.where behavior for empty max_indices with this special conditional expression
@@ -313,7 +315,7 @@ def quadratic_subpixel_maximum(image, max_index):
 
     # Solve the system Gx(x,y) = 0, Gy(x,y) = 0 for the quadratic maximum
     denominator = (4.0 * A * C - B * B)
-    if denominator > 0.0: # eliminate saddles or divide by zero problems
+    if denominator > 0.0:  # eliminate saddles or divide by zero problems
         subpixel_x = (B * E - 2.0 * C * D) / denominator
         subpixel_y = (B * D - 2.0 * A * E) / denominator
 
@@ -323,4 +325,4 @@ def quadratic_subpixel_maximum(image, max_index):
         #                 D * subpixel_x + E * subpixel_y + F
         return y + subpixel_y, x + subpixel_x,  # subpx_max_val
     else:
-        return y, x, # b00
+        return y, x,  # b00
