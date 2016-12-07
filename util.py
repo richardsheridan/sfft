@@ -125,33 +125,20 @@ def wavelet_filter(series, sigma, bandwidth=None):
     return smoothed
 
 
-def find_crossings(smooth_series, slope_cutoff=None):
-    candidate_crossings = (smooth_series > 0) & (np.roll(smooth_series, shift=-1, axis=-1) < 0)
-
-    if slope_cutoff is not None:
-        sufficient_slope = (np.gradient(smooth_series, axis=-1) < slope_cutoff)
-        candidate_crossings &= sufficient_slope
-
+def find_zero_crossings(smooth_series, direction='downward'):
+    series_shifted_left = np.roll(smooth_series, shift=-1, axis=-1)
+    if direction == 'downward':
+        candidate_crossings = (smooth_series >= 0) & (series_shifted_left < 0)
+    elif direction == 'upward':
+        candidate_crossings = (smooth_series < 0) & (series_shifted_left > 0)
+    elif direction == 'all':
+        candidate_crossings = (smooth_series * series_shifted_left < 0) | (smooth_series == 0)
+    else:
+        raise ValueError('Invalid choice of direction:', direction)
     candidate_crossings[-1] = 0
 
     return candidate_crossings
 
-def find_grips(smooth_series):
-    l = len(smooth_series)
-    kernel = np.gradient(gaussian(l//50,l/500))
-    slope = convolve(smooth_series,kernel,'same')
-
-    for i, val in enumerate(slope):
-        if val < 0:
-            left_grip = i
-            break
-
-    for i, val in enumerate(slope[::-1]):
-        if val > 0:
-            right_grip = i
-            break
-
-    return left_grip, right_grip
 
 def path_with_stab(path):
     dirname, filename = os.path.split(path)

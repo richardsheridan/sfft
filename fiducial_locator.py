@@ -5,8 +5,8 @@ import numpy as np
 
 from cvutil import make_pyramid
 from gui import MPLGUI
-from util import wavelet_filter, find_crossings, get_files, basename_without_stab, DISPLAY_SIZE, batch, \
-    find_grips
+from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, DISPLAY_SIZE, batch, \
+    gaussian, convolve
 
 
 FIDUCIAL_FILENAME = 'fiducials.json'
@@ -144,7 +144,7 @@ class FidGUI(MPLGUI):
 def fid_profile_from_image(image):
     fiducial_profile = image.mean(axis=0)  # FIXME: This is SLOW due to array layout, proven by Numba replacement
     fiducial_profile *= -1.0
-    fiducial_profile += 255.0
+    # fiducial_profile += 255.0
     fiducial_profile -= fiducial_profile.mean()
 
     return fiducial_profile
@@ -158,7 +158,7 @@ def choose_fids(filtered_profile, fid_amp, mask_until):
     end_mask = np.ones_like(filtered_profile, bool)
     end_mask[:mask_until] = False
 
-    fid_peaks = find_crossings(np.gradient(filtered_profile)) & (filtered_profile >= fid_amp) & end_mask
+    fid_peaks = find_zero_crossings(np.gradient(filtered_profile)) & (filtered_profile >= fid_amp) & end_mask
 
     fid_ind = fid_peaks.nonzero()[0]
 
@@ -176,6 +176,30 @@ def choose_fids(filtered_profile, fid_amp, mask_until):
 
     return left_fid/l, right_fid/l
 
+def find_grips(profile, threshold = 2):
+    """
+    Presume that the grips appear as peaks in the filtered slope of the profile i.e. curvature == 0
+    left grip is the first one and right grip is the last one
+    eliminate false positives with a threshold on the steepness (slope)
+    :param profile:
+    :return:
+    """
+    l = len(profile)
+    kernel = np.gradient(gaussian(l // 50, l / 500))
+    kernel /= np.sum(np.abs(kernel)) # This keeps the values of the slope array stable for thresholding
+    slope = convolve(profile - profile[0], kernel, 'same') # shift to eliminate edge effects
+    curvature = np.gradient(slope)
+    inflections = find_zero_crossings(curvature, 'all')
+    # print(np.max(np.abs(slope)))
+    inflections &= (np.abs(slope) > threshold)
+    inflections = np.where(inflections)[0]
+    print(inflections)
+    try:
+        left_grip = inflections[0]
+        right_grip = inflections[-1]
+    except:
+        left_grip, right_grip = 0, 0
+    return left_grip, right_grip
 
 def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
     if isinstance(image, str):  # TODO: more robust dispatch
