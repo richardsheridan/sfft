@@ -165,10 +165,10 @@ class BreakGUI(MPLGUI):
 def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
     from fiber_locator import load_stab_tif
-    image = load_stab_tif(image_path, stabilize_args)
+    image = load_stab_tif(image_path, *stabilize_args)
 
     from fiducial_locator import load_fids
-    fids = load_fids(image_path, image, fid_args)
+    fids = load_fids(image_path, image, *fid_args)
 
     pyramid = make_pyramid(image, p_level)
     image = pyramid[p_level]

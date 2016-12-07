@@ -61,7 +61,7 @@ class FidGUI(MPLGUI):
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
         from fiber_locator import load_stab_tif
-        self.image = image = load_stab_tif(image_path, self.stabilize_args)
+        self.image = image = load_stab_tif(image_path, *self.stabilize_args)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
