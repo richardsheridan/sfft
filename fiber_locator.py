@@ -349,8 +349,10 @@ def load_stab_tif(image_path, *stabilize_args):
     if path.exists(stabilized_image_path):
         image = cv2.imread(stabilized_image_path, cv2.IMREAD_GRAYSCALE)
         # vshift, theta = load_stab_data(stabilized_image_path)
-    else:
+    elif stabilize_args:
         image = stabilize_file(image_path, *stabilize_args, return_image=True)
+    else:
+        image = _load_tdi_corrected(image_path)
     return image
 
 
