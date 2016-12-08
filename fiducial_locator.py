@@ -193,7 +193,7 @@ def find_grips(profile, threshold = 2):
     # print(np.max(np.abs(slope)))
     inflections &= (np.abs(slope) > threshold)
     inflections = np.where(inflections)[0]
-    print(inflections)
+    # print(inflections)
     try:
         left_grip = inflections[0]
         right_grip = inflections[-1]

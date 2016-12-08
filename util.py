@@ -257,6 +257,7 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
     #     maxima.T[-border:] = False
     # return np.where(maxima)
 
+    # TODO: sometimes several maxima appear within a neighborhood still. make sure the results are same as max_filter!
     rows, cols = image.shape
     max_indices = []
     for candidate in zip(*np.where(maxima)):  # This call to np.where is the bottleneck for large images
