@@ -248,12 +248,14 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
         maxima = np.array(threshold, bool)
 
     # Technically this could replace all the following logic, but it is slower because it works on each pixel
-    # maxima &= (image ==  max_filter(image, neighborhood, elliptical))
+    # from cvutil import max_filter
+    # maxima &= (image ==  max_filter(image, neighborhood))
     # if border:
     #     maxima[:border] = False
     #     maxima[-border:] = False
     #     maxima.T[:border] = False
     #     maxima.T[-border:] = False
+    # return np.where(maxima)
 
     rows, cols = image.shape
     max_indices = []
