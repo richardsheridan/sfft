@@ -300,13 +300,15 @@ def rotate_fiber(image, vshift, theta):
         x1 = x0 + max_chunk
         rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
         transform = _compose(rotation, translation)
-        image_parts.append(cv2.warpAffine(image[:, x0:x1], transform, (max_chunk, y_size), borderValue=mean))
+        image_parts.append(cv2.warpAffine(image[:, x0:x1], transform, (max_chunk, y_size),
+                                          borderMode=cv2.BORDER_REPLICATE))  # borderValue=mean))
 
     if x_size % max_chunk:
         x0 = max_chunk * chunks
         rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
         transform = _compose(rotation, translation)
-        image_parts.append(cv2.warpAffine(image[:, x0:], transform, (x_size - x0, y_size), borderValue=mean))
+        image_parts.append(cv2.warpAffine(image[:, x0:], transform, (x_size - x0, y_size),
+                                          borderMode=cv2.BORDER_REPLICATE))  #borderValue=mean))
 
     output = np.hstack(image_parts)
 
@@ -321,7 +323,7 @@ def rotate_fiber(image, vshift, theta):
         rotation = cv2.getRotationMatrix2D((x_size // 2 - px0, y_size // 2), theta_deg, 1)
         transform = _compose(rotation, translation)
         cv2.warpAffine(image[:, px0:px1], transform, (patchwidth, y_size), dst=output[:, px0:px1],
-                       borderMode=cv2.BORDER_TRANSPARENT)
+                       borderMode=cv2.BORDER_REPLICATE)  # borderValue=mean)
 
     return output
 
