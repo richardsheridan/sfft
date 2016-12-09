@@ -1,5 +1,3 @@
-from numbers import Number
-
 import cv2
 import numpy as np
 
@@ -11,7 +9,9 @@ def sobel_filter(image_array, dx=0, dy=1, ksize=1):
 
 def laplacian_filter(image_array, ksize=1):
     # display_pyramid(pyramid)
-    log = cv2.Laplacian(image_array, cv2.CV_32F, ksize=ksize, scale=2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1)
+    log = cv2.Laplacian(image_array, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE,
+                        ksize=ksize, scale=(2 ** -(ksize * 2 - 2 - 2 - 2) if ksize > 1 else 1),
+                        )
     log[0, :] = 0
     log[-1, :] = 0
     return log
@@ -27,7 +27,7 @@ def make_pyramid(image, levels=7):
 
 
 def puff_pyramid(pyramid, level, tolevel=0, image=None):
-    image = pyramid[level].copy() if image is None else image.copy()
+    image = pyramid[level] if image is None else image
     for i in reversed(range(tolevel, level)):
         image = cv2.pyrUp(image, dstsize=pyramid[i].shape[::-1])
     return image
@@ -59,18 +59,18 @@ def make_dog(image, sigma_wide, sigma_narrow):
     if sigma_wide < sigma_narrow:
         sigma_wide, sigma_narrow = sigma_narrow, sigma_wide
     image = np.float32(image)
-    return (cv2.GaussianBlur(image, (0, 0), sigma_wide, borderType=cv2.BORDER_REPLICATE) -
-            cv2.GaussianBlur(image, (0, 0), sigma_narrow, borderType=cv2.BORDER_REPLICATE))
-
+    image = (cv2.GaussianBlur(image, (0, 0), sigma_wide, borderType=cv2.BORDER_REPLICATE) -
+             cv2.GaussianBlur(image, (0, 0), sigma_narrow, borderType=cv2.BORDER_REPLICATE))
+    image /= cv2.meanStdDev(image)[1]
+    return image
 
 def make_log(image, sigma):
     image = np.float32(image)
     if sigma > 0:
-        blurredimage = cv2.GaussianBlur(np.float32(image), (0, 0), sigma, borderType=cv2.BORDER_REPLICATE)
-    else:
-        blurredimage = image
-    return cv2.Laplacian(blurredimage, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
-
+        image = cv2.GaussianBlur(image, (0, 0), sigma, borderType=cv2.BORDER_REPLICATE)
+    image = cv2.Laplacian(image, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
+    image /= cv2.meanStdDev(image)[1]
+    return image
 
 def max_filter(image, neighborhood=1, elliptical=True):
     if elliptical:

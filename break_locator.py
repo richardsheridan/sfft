@@ -59,8 +59,8 @@ class BreakGUI(MPLGUI):
         self.register_slider('cutoff', self.update_cutoff,
                              label='Amplitude Cutoff',
                              valmin=0,
-                             valmax=100,
-                             valinit=30,
+                             valmax=10,
+                             valinit=1,
                              )
         self.register_slider('neighborhood', self.update_neighborhood,
                              label='Neighborhood',
