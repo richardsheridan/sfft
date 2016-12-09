@@ -60,8 +60,8 @@ class FidGUI(MPLGUI):
 
     def load_frame(self):
         image_path = self.images[self.sliders['frame_number'].val]
-        from fiber_locator import load_stab_tif
-        self.image = image = load_stab_tif(image_path, *self.stabilize_args)
+        from fiber_locator import load_stab_img
+        self.image = image = load_stab_img(image_path, *self.stabilize_args)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
@@ -204,8 +204,8 @@ def find_grips(profile, threshold = 2):
 def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
     if isinstance(image, str):  # TODO: more robust dispatch
         print('Processing: ' + path.basename(image))
-        from fiber_locator import load_stab_tif
-        image = load_stab_tif(image, *stabilize_args)
+        from fiber_locator import load_stab_img
+        image = load_stab_img(image, *stabilize_args)
         pyramid = make_pyramid(image, p_level)
     elif isinstance(image, np.ndarray):
         pass

@@ -71,9 +71,9 @@ class BreakGUI(MPLGUI):
                              )
 
     def load_frame(self):
-        from fiber_locator import load_stab_tif
+        from fiber_locator import load_stab_img
         image_path = self.images[int(self.sliders['frame_number'].val)]
-        image = load_stab_tif(image_path, self.stabilize_args)
+        image = load_stab_img(image_path, self.stabilize_args)
 
         from fiducial_locator import load_fids
         self.fids = load_fids(image_path, image, *self.fid_args)
@@ -164,8 +164,8 @@ class BreakGUI(MPLGUI):
 
 def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
-    from fiber_locator import load_stab_tif
-    image = load_stab_tif(image_path, *stabilize_args)
+    from fiber_locator import load_stab_img
+    image = load_stab_img(image_path, *stabilize_args)
 
     from fiducial_locator import load_fids
     fids = load_fids(image_path, image, *fid_args)

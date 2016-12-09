@@ -346,7 +346,7 @@ def load_stab_data(stabilized_image_path):
     return data[key]
 
 
-def load_stab_tif(image_path, *stabilize_args):
+def load_stab_img(image_path, *stabilize_args):
     stabilized_image_path = path_with_stab(image_path)
     if path.exists(stabilized_image_path):
         image = cv2.imread(stabilized_image_path, cv2.IMREAD_GRAYSCALE)
