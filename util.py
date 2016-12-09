@@ -257,34 +257,38 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
     #     maxima.T[-border:] = False
     # return np.where(maxima)
 
-    # TODO: sometimes several maxima appear within a neighborhood still. make sure the results are same as max_filter!
     rows, cols = image.shape
-    max_indices = []
+    max_indices = set()
     for candidate in zip(*np.where(maxima)):  # This call to np.where is the bottleneck for large images
         # If we have eliminated a candidate in a previous iteration, we can skip ahead
         if not maxima[candidate]:
             continue
 
-        r, c = candidate
-        r0, r1 = max(r - neighborhood, 0), min(r + neighborhood + 1, rows)
-        c0, c1 = max(c - neighborhood, 0), min(c + neighborhood + 1, cols)
+        while True:
+            r, c = candidate
+            r0, r1 = max(r - neighborhood, 0), min(r + neighborhood + 1, rows)
+            c0, c1 = max(c - neighborhood, 0), min(c + neighborhood + 1, cols)
 
-        # Wipe all maximum candidates in the neighborhood so we don't check others later
-        maxima[r0:r1, c0:c1] = False
+            # Wipe all maximum candidates in the neighborhood so we don't check others later
+            maxima[r0:r1, c0:c1] = False
 
-        # Locate the actual maximum of the neighborhood
-        neighborhood_array = image[r0:r1, c0:c1]
-        max_index = rm, cm = np.unravel_index(np.argmax(neighborhood_array), neighborhood_array.shape)
+            # Locate the actual maximum of the neighborhood
+            neighborhood_array = image[r0:r1, c0:c1]
+            max_index = rm, cm = np.unravel_index(np.argmax(neighborhood_array), neighborhood_array.shape)
 
-        # Shift max_index to image coordinates
-        max_index = rm, cm = rm + r0, cm + c0
+            # Shift max_index to image coordinates
+            max_index = rm, cm = rm + r0, cm + c0
+            if max_index == candidate:
+                break
+            else:
+                candidate = max_index
 
         # Drop any "maxima" near the border of the image, which are by and large false positives
-        if border < rm < rows - border and border < cm < cols - border:
-            maxima[max_index] = True
-            if subpixel:
-                max_index = quadratic_subpixel_maximum(image, max_index)
-            max_indices.append(max_index)
+        if border <= rm < rows - border and border <= cm < cols - border:
+            max_indices.add(max_index)
+
+    if subpixel:
+        max_indices = [quadratic_subpixel_maximum(image, max_index) for max_index in max_indices]
 
     # Emulate np.where behavior for empty max_indices with this special conditional expression
     return np.transpose(max_indices) if max_indices else (np.array([], dtype=int), np.array([], dtype=int))
