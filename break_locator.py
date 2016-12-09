@@ -96,8 +96,8 @@ class BreakGUI(MPLGUI):
         neighborhood = self.sliders['neighborhood'].val
 
         row_index, col_index = peak_local_max(image, cutoff, neighborhood)
-        self.locations = row_index / rows, col_index / cols
-        print(self.locations)
+        self.locations = row_index / (rows-1), col_index / (cols-1)
+        print(len(row_index))
 
     def refresh_plot(self):
         ax = self.axes['image']
@@ -124,6 +124,10 @@ class BreakGUI(MPLGUI):
                   extent=[0, 1, 1, 0],
                   aspect='auto',
                   )
+        self.artists['image_breaks'] = ax.plot(self.locations[1],  # * DISPLAY_SIZE[0],
+                                               self.locations[0],  # * DISPLAY_SIZE[1],
+                                               'rx', ms=10)[0]
+
         self.fig.canvas.draw()
 
     def execute_batch(self, event=None):
