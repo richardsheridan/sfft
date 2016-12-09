@@ -185,7 +185,7 @@ def find_grips(profile, threshold = 2):
     :return:
     """
     l = len(profile)
-    kernel = np.gradient(gaussian(l // 50, l / 500))
+    kernel = np.gradient(gaussian(l // 50, l / 500).astype(np.float32))
     kernel /= np.sum(np.abs(kernel)) # This keeps the values of the slope array stable for thresholding
     slope = convolve(profile - profile[0], kernel, 'same') # shift to eliminate edge effects
     curvature = np.gradient(slope)
@@ -286,7 +286,7 @@ def save_fids(parameters, images, left_fids, right_fids):
 
 
 if __name__ == '__main__':
-    # a = FidGUI(get_files())
+    a = FidGUI(get_files())
     # a = batch_fids(get_files(), 7000, 1000)
 
 
@@ -323,9 +323,11 @@ if __name__ == '__main__':
 
     from collections import OrderedDict
 
-    parameters = OrderedDict([('p_level', 4), ('filter_width', 0.010937500000000003), ('cutoff', 8.8636363636363669)])
+    parameters = OrderedDict([('p_level', 5), ('filter_width', 0.014616477272727278), ('cutoff', 33.06818181818182)])
+    images = a.images
+    parameters = a.parameters
     prof.enable()
-    a = batch(locate_fids, images, *parameters.values())
+    batch(locate_fids, images, *parameters.values())
     # a = FidGUI(images)
     prof.disable()
     s = io.StringIO()

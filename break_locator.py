@@ -213,7 +213,7 @@ def load_breaks(directory):
     return breaks
 
 if __name__ == '__main__':
-    # a = BreakGUI(get_files(), )
+    a = BreakGUI(get_files(), )
 
 
     import cProfile, pstats, io
@@ -258,10 +258,12 @@ if __name__ == '__main__':
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_5_b.jpg')
 
     from collections import OrderedDict
-    parameters = OrderedDict([('p_level', 3), ('filter_width', 1.2215909090909101), ('cutoff', 19.602272727272741), ('neighborhood', 10)])
+    parameters = OrderedDict([('p_level', 3), ('filter_width', 1.0037878787878789), ('cutoff', 0.00026799242424242417), ('neighborhood', 5)])
+    parameters = a.parameters
+    images = a.images
 
     prof.enable()
-    a = batch(locate_breaks,images, *parameters.values())  # , fid_args=(7000, 1000),
+    b = batch(locate_breaks,images, *parameters.values())  # , fid_args=(7000, 1000),
     prof.disable()
     s = io.StringIO()
     sortby = 'tottime'
