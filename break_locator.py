@@ -215,10 +215,6 @@ def load_breaks(directory):
 if __name__ == '__main__':
     a = BreakGUI(get_files(), )
 
-
-    import cProfile, pstats, io
-
-    prof = cProfile.Profile()
     # images = get_files()
     images = ('c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str000.jpg',
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str01d.jpg',
@@ -262,11 +258,6 @@ if __name__ == '__main__':
     parameters = a.parameters
     images = a.images
 
-    prof.enable()
-    b = batch(locate_breaks,images, *parameters.values())  # , fid_args=(7000, 1000),
-    prof.disable()
-    s = io.StringIO()
-    sortby = 'tottime'
-    ps = pstats.Stats(prof, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+    from cProfile import run
+
+    run('batch(locate_breaks,images, *parameters.values()', sort='time')

@@ -290,9 +290,6 @@ if __name__ == '__main__':
     # a = batch_fids(get_files(), 7000, 1000)
 
 
-    import cProfile, pstats, io
-
-    prof = cProfile.Profile()
     # images = get_files()
     images = ['c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str000.jpg',
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str01d.jpg',
@@ -326,12 +323,7 @@ if __name__ == '__main__':
     parameters = OrderedDict([('p_level', 5), ('filter_width', 0.014616477272727278), ('cutoff', 33.06818181818182)])
     images = a.images
     parameters = a.parameters
-    prof.enable()
-    batch(locate_fids, images, *parameters.values())
-    # a = FidGUI(images)
-    prof.disable()
-    s = io.StringIO()
-    sortby = 'tottime'
-    ps = pstats.Stats(prof, stream=s).sort_stats(sortby)
-    ps.print_stats()
-    print(s.getvalue())
+
+    from cProfile import run
+
+    run('batch(locate_fids, images, *parameters.values())', sort='time')

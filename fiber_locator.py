@@ -1,8 +1,6 @@
 from os import path
-from multiprocessing import pool, freeze_support
 
 import cv2
-from itertools import starmap as _map, repeat
 import numpy as np
 
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
@@ -402,8 +400,9 @@ def save_stab(image_paths, batch, threshold, p_level):
 
 if __name__ == '__main__':
     image_paths = get_files()
-    a = FiberGUI(image_paths)  # ,downsample=(5000,600))
+    a = FiberGUI(image_paths)
     print(a.sliders['threshold'].val)
 
-    # prof.run('a = batch_stabilize(get_files(),70,)', sort='time')
-    # batch_stabilize(get_files(),270,470,1)
+    from cProfile import run
+
+    run('batch(stabilize_file, image_paths,*a.parameters.values())', sort='time', )
