@@ -1,5 +1,4 @@
 import json
-from itertools import starmap as _map, repeat
 from os import path
 
 import numpy as np
@@ -35,7 +34,7 @@ class BreakGUI(MPLGUI):
 
         self.slider_coords = [.3, .30, .55, .03]
 
-        self.register_slider('frame_number',self.update_frame_number,
+        self.register_slider('frame_number', self.update_frame_number,
                              isparameter=False,
                              forceint=True,
                              label='Frame Number',
@@ -96,7 +95,7 @@ class BreakGUI(MPLGUI):
         neighborhood = self.sliders['neighborhood'].val
 
         row_index, col_index = peak_local_max(image, cutoff, neighborhood)
-        self.locations = row_index / (rows-1), col_index / (cols-1)
+        self.locations = row_index / (rows - 1), col_index / (cols - 1)
         print(len(row_index))
 
     def refresh_plot(self):
@@ -132,7 +131,7 @@ class BreakGUI(MPLGUI):
 
     def execute_batch(self, event=None):
         parameters = self.parameters
-        breaks = batch(locate_breaks,self.images, *parameters.values())
+        breaks = batch(locate_breaks, self.images, *parameters.values())
         if event is None:
             # called from command line without argument
             return breaks
@@ -180,8 +179,9 @@ def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_a
     filtered_image = make_log(image, filter_width)
 
     row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
-    locations = row_index / rows, col_index / cols
-    relative_locations = (locations[0] - fids[0]) / (fids[1] - fids[0]), locations[1]
+    # TODO: sort these?
+    locations = row_index / (rows - 1), col_index / (cols - 1)
+    relative_locations = (locations[0] - fids[0]) / (fids[1] - fids[0])
     return locations, relative_locations
 
 
@@ -204,13 +204,13 @@ def save_breaks(parameters, breaks, images):
         dump(output, file)
 
 
-def load_breaks(directory):
+def load_breaks(directory, fid_relative=True):
     breakfile = path.join(directory, BREAK_FILENAME)
     with open(breakfile) as fp:
         header, data = json.load(fp)
 
-    breaks = [data[name][1] for name in sorted(data)]
-    return breaks
+    return [(name, data[name][fid_relative]) for name in sorted(data)]
+
 
 if __name__ == '__main__':
     a = BreakGUI(get_files(), )
@@ -254,10 +254,12 @@ if __name__ == '__main__':
               'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_tdiz_5_b.jpg')
 
     from collections import OrderedDict
-    parameters = OrderedDict([('p_level', 3), ('filter_width', 1.0037878787878789), ('cutoff', 0.00026799242424242417), ('neighborhood', 5)])
+
+    parameters = OrderedDict(
+        [('p_level', 3), ('filter_width', 1.0037878787878789), ('cutoff', 0.00026799242424242417), ('neighborhood', 5)])
     parameters = a.parameters
     images = a.images
 
     from cProfile import run
 
-    run('batch(locate_breaks,images, *parameters.values()', sort='time')
+    run('batch(locate_breaks,images, *parameters.values())', sort='time')

@@ -78,7 +78,7 @@ class FiberGUI(MPLGUI):
         threshold = self.sliders['threshold'].val
         p_level = self.sliders['p_level'].val
         image = self.pyramid[p_level]
-        self.filtered = image = sobel_filter(image)
+        self.filtered = image = sobel_filter(image, 0, 1)
         self.edges = edges(image, threshold)
 
     def recalculate_lines(self):
@@ -361,7 +361,7 @@ def stabilize_file(image_path, threshold, p_level, return_image=False, save_imag
     print('Loading:', fname)
     image = _load_tdi_corrected(image_path)
     pyramid = make_pyramid(image, p_level)
-    edgeimage = sobel_filter(pyramid[p_level])
+    edgeimage = sobel_filter(pyramid[p_level], 0, 1)
     edgeimage = edges(edgeimage, threshold)
     slope, intercept, theta = fit_line_moments(edgeimage)
     intercept = intercept / edgeimage.shape[0] * image.shape[0]

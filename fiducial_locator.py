@@ -160,7 +160,7 @@ def choose_fids(filtered_profile, fid_amp, mask_until):
 
     fid_peaks = find_zero_crossings(np.gradient(filtered_profile)) & (filtered_profile >= fid_amp) & end_mask
 
-    fid_ind = fid_peaks.nonzero()[0]
+    fid_ind = np.where(fid_peaks)[0]
 
     try:
         left_fid = fid_ind[0]

@@ -213,7 +213,7 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
 
     cycle_changes = np.diff(cycle)
 
-    before_tdi = np.nonzero(cycle_changes)[0]
+    before_tdi = np.where(cycle_changes)[0]
     if stress_type == 'before_tdi':
         return stress[before_tdi], label
 
@@ -288,13 +288,13 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
             max_indices.add(max_index)
 
     if subpixel:
-        max_indices = [quadratic_subpixel_maximum(image, max_index) for max_index in max_indices]
+        max_indices = [quadratic_subpixel_extremum(image, max_index) for max_index in max_indices]
 
     # Emulate np.where behavior for empty max_indices with this special conditional expression
     return np.transpose(max_indices) if max_indices else (np.array([], dtype=int), np.array([], dtype=int))
 
 
-def quadratic_subpixel_maximum(image, max_index):
+def quadratic_subpixel_extremum(image, max_index):
     # Image and Vision Computing, vol.20, no.13/14, pp.981-991, December 2002.
     # http://vision-cdc.csiro.au/changs/doc/sun02ivc.pdf
     y, x = max_index
@@ -326,10 +326,10 @@ def quadratic_subpixel_maximum(image, max_index):
         subpixel_x = (B * E - 2.0 * C * D) / denominator
         subpixel_y = (B * D - 2.0 * A * E) / denominator
 
-    # check for badly behaved estimates, possibly due to noise?
-    if denominator > 0.0 and -1.0 < subpixel_x < 1.0 and -1.0 < subpixel_y < 1.0:
-        # subpx_max_val = A * subpixel_x ** 2 + B * subpixel_y * subpixel_x + C * subpixel_y ** 2 + \
-        #                 D * subpixel_x + E * subpixel_y + F
-        return y + subpixel_y, x + subpixel_x,  # subpx_max_val
-    else:
-        return y, x,  # b00
+        # check for badly behaved estimates, possibly due to noise?
+        if -1.0 < subpixel_x < 1.0 and -1.0 < subpixel_y < 1.0:
+            # subpx_max_val = A * subpixel_x ** 2 + B * subpixel_y * subpixel_x + C * subpixel_y ** 2 + \
+            #                 D * subpixel_x + E * subpixel_y + F
+            return y + subpixel_y, x + subpixel_x,  # subpx_max_val
+
+    return y, x,  # b00

@@ -2,7 +2,20 @@ import cv2
 import numpy as np
 
 
-def sobel_filter(image_array, dx=0, dy=1, ksize=1):
+def arg_min_max(image_array, return_values=False):
+    minval, maxval, minpos, maxpos = cv2.minMaxLoc(image_array)
+
+    # fix opencv coordinate conventions
+    minpos = minpos[::-1]
+    maxpos = maxpos[::-1]
+
+    if return_values:
+        return minval, maxval, minpos, maxpos
+    else:
+        return minpos, maxpos
+
+
+def sobel_filter(image_array, dx, dy, ksize=1):
     return cv2.Sobel(image_array, cv2.CV_32F, dx, dy, ksize=ksize,
                      scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
 
