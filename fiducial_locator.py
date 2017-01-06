@@ -291,39 +291,39 @@ if __name__ == '__main__':
 
 
     # images = get_files()
-    images = ['c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str000.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str01d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str02d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str03d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str04d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str05d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str06d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str07d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str08d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str09d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str10d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str11d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str12d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str13d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str14d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str15d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str16d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str17d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str18d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str19d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str20d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str21d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str22d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str23d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str24d.jpg',
-              'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_tdiz.jpg']
+    # images = ['c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str000.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str01d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str02d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str03d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str04d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str05d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str06d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str07d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str08d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str09d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str10d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str11d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str12d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str13d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str14d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str15d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str16d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str17d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str18d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str19d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str20d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str21d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str22d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str23d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_str24d.jpg',
+              # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\10051319\\stab_tdiz.jpg']
 
-    from collections import OrderedDict
+    # from collections import OrderedDict
 
-    parameters = OrderedDict([('p_level', 5), ('filter_width', 0.014616477272727278), ('cutoff', 33.06818181818182)])
-    images = a.images
-    parameters = a.parameters
+    # parameters = OrderedDict([('p_level', 5), ('filter_width', 0.014616477272727278), ('cutoff', 33.06818181818182)])
+    # images = a.images
+    # parameters = a.parameters
 
-    from cProfile import run
+    # from cProfile import run
 
-    run('batch(locate_fids, images, *parameters.values())', sort='time')
+    # run('batch(locate_fids, images, *parameters.values())', sort='time')

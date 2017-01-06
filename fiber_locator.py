@@ -400,9 +400,9 @@ def save_stab(image_paths, batch, threshold, p_level):
 
 if __name__ == '__main__':
     image_paths = get_files()
-    a = FiberGUI(image_paths)
-    print(a.sliders['threshold'].val)
-
-    from cProfile import run
-
-    run('batch(stabilize_file, image_paths,*a.parameters.values())', sort='time', )
+    # a = FiberGUI(image_paths)
+    # print(a.sliders['threshold'].val)
+    #
+    # from cProfile import run
+    #
+    # run('batch(stabilize_file, image_paths,*a.parameters.values())', sort='time', )
