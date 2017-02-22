@@ -352,6 +352,7 @@ def load_stab_img(image_path, *stabilize_args):
     elif stabilize_args:
         image = stabilize_file(image_path, *stabilize_args, return_image=True)
     else:
+        #TODO: do we really want to silently fall back to opening the unstabilized TDI
         image = _load_tdi_corrected(image_path)
     return image
 
@@ -400,7 +401,7 @@ def save_stab(image_paths, batch, threshold, p_level):
 
 if __name__ == '__main__':
     image_paths = get_files()
-    # a = FiberGUI(image_paths)
+    a = FiberGUI(image_paths)
     # print(a.sliders['threshold'].val)
     #
     # from cProfile import run

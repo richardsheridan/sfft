@@ -213,9 +213,9 @@ def load_breaks(directory, fid_relative=True):
 
 
 if __name__ == '__main__':
-    # a = BreakGUI(get_files(), )
+    a = BreakGUI(get_files(), )
 
-    images = get_files()
+    # images = get_files()
     # images = ('c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str000.jpg',
               # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str01d.jpg',
               # 'c:\\users\\rjs3\\onedrive\\data\\sfft\\09071603\\stab_str02d.jpg',
