@@ -6,8 +6,7 @@ import numpy as np
 from cvutil import make_pyramid
 from gui import MPLGUI
 from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, DISPLAY_SIZE, batch, \
-    gaussian, convolve
-
+    gaussian, convolve, quadratic_subpixel_extremum_1d
 
 FIDUCIAL_FILENAME = 'fiducials.json'
 
@@ -167,12 +166,16 @@ def choose_fids(filtered_profile, fid_amp, mask_until):
     except IndexError:
         raise NoPeakError('No peaks found!')
 
+    left_fid = quadratic_subpixel_extremum_1d(filtered_profile,left_fid)
+
     for i in fid_ind:
         if i - left_fid > 0.64 * l:
             right_fid = i
             break
     else:
         raise NoPeakError('No right fiducial?', locals())
+
+    right_fid = quadratic_subpixel_extremum_1d(filtered_profile,right_fid)
 
     return left_fid/l, right_fid/l
 
