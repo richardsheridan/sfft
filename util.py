@@ -1,6 +1,6 @@
 import sys, os, json
 from tkinter import Tk
-from tkinter.filedialog import askopenfilename, asksaveasfilename
+from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
 import numpy as np
 # from numpy import convolve
 from scipy.signal import fftconvolve as convolve, ricker, gaussian
@@ -76,6 +76,25 @@ def get_files():
         sys.exit()
 
     return fullpaths
+
+
+def get_folder():
+    """
+    Open a dialog and return a folder.
+    """
+    # we don't want a full GUI, so keep the root window from appearing
+    Tk().withdraw()
+
+    # show an "Open" dialog box and return the selected folder
+    directory = askdirectory()
+
+    if len(directory):
+        print('User opened:', directory, sep='\n')
+    else:
+        print('No files selected')
+        sys.exit()
+
+    return directory
 
 
 def put_file():
