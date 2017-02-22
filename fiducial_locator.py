@@ -19,9 +19,10 @@ class FidGUI(MPLGUI):
         super().__init__()
 
     def create_layout(self):
-        import matplotlib.pyplot as plt
-        self.fig, (self.axes['image'], self.axes['profile']) = plt.subplots(2, 1, figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.3)
+
+        self.create_figure()
+        self.register_axis('image',[.1,.65,.8,.3])
+        self.register_axis('profile',[.1,.3,.8,.3])
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
@@ -30,35 +31,16 @@ class FidGUI(MPLGUI):
 
         self.slider_coords = [.3, .20, .55, .03]
 
-        self.register_slider('frame_number',self.update_frame_number,
-                             isparameter=False,
-                             forceint=True,
-                             label='Frame Number',
-                             valmin=0,
-                             valmax=len(self.images) - 1,
-                             valinit=0,
-                             )
-        self.register_slider('p_level', self.update_p_level,
-                             forceint=True,
-                             label='Pyramid Level',
-                             valmin=0,
-                             valmax=7,
-                             valinit=4, )
-        self.register_slider('filter_width', self.update_filter_width,
-                             label='Filter Width',
-                             valmin=0,
-                             valmax=.035,
-                             valinit=.009,
-                             )
-        self.register_slider('cutoff', self.update_cutoff,
-                             label='Amplitude Cutoff',
-                             valmin=0,
-                             valmax=60,
-                             valinit=30,
-                             )
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+                             label='Frame Number', isparameter=False, forceint=True)
+        self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=4, label='Pyramid Level',
+                             forceint=True)
+        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=.035, valinit=.009,
+                             label='Filter Width')
+        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=60, valinit=30, label='Amplitude Cutoff')
 
     def load_frame(self):
-        image_path = self.images[self.sliders['frame_number'].val]
+        image_path = self.images[self.slider_value('frame_number')]
         from fiber_locator import load_stab_img
         self.image = image = load_stab_img(image_path, *self.stabilize_args)
         self.pyramid = make_pyramid(image)
@@ -68,12 +50,12 @@ class FidGUI(MPLGUI):
         self.recalculate_locations()
 
     def recalculate_profile(self):
-        image = self.pyramid[self.sliders['p_level'].val]
+        image = self.pyramid[self.slider_value('p_level')]
         self.profile = fid_profile_from_image(image)
 
     def recalculate_locations(self):
-        fid_window = self.sliders['filter_width'].val
-        fid_amp = self.sliders['cutoff'].val
+        fid_window = self.slider_value('filter_width')
+        fid_amp = self.slider_value('cutoff')
         fid_profile = self.profile
         fid_window = fid_window * len(fid_profile)
         # TODO new script to find grips and import those values
@@ -89,7 +71,7 @@ class FidGUI(MPLGUI):
     def refresh_plot(self):
         ax = self.axes['image']
         ax.clear()
-        display_image = self.pyramid[self.sliders['p_level'].val]
+        display_image = self.pyramid[self.slider_value('p_level')]
         ax.imshow(cv2.resize(display_image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
         self.artists['image_fids'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
         ax.autoscale_view(tight=True)
@@ -103,7 +85,7 @@ class FidGUI(MPLGUI):
         no_nan = not np.any(np.isnan(locations))
         self.artists['profile_fids'].set_ydata(self.filtered_profile[np.int64(locations) if no_nan else [0, 0]])
         self.artists['cutoff'].set_xdata([0, len(self.profile)])
-        self.artists['cutoff'].set_ydata([self.sliders['cutoff'].val] * 2)
+        self.artists['cutoff'].set_ydata([self.slider_value('cutoff')] * 2)
 
         self.axes['profile'].relim()
         self.axes['profile'].autoscale_view()

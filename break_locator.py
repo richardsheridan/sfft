@@ -20,58 +20,32 @@ class BreakGUI(MPLGUI):
         super().__init__()
 
     def create_layout(self):
-        import matplotlib.pyplot as plt
-        self.fig, (self.axes['image'], self.axes['filtered']) = plt.subplots(2, 1, figsize=(8, 10))
-        from matplotlib.widgets import RadioButtons
-        # self.fig, self.axes['image'] = plt.subplots(1, 1, figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.4)
+
+        self.create_figure()
+        self.register_axis('image',[.1,.62,.8,.3])
+        self.register_axis('filtered',[.1,.29,.8,.3])
         # self.artists['profile'] = self.axes['profile'].plot(0)[0]
         # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         self.register_button('save', self.execute_batch, [.3, .95, .2, .03], label='Save batch')
-        self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget=RadioButtons,
+        self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget='RadioButtons',
                              labels=('filtered', 'thresholded',))
 
-        self.slider_coords = [.3, .30, .55, .03]
+        self.slider_coords = [.3, .22, .55, .03]
 
-        self.register_slider('frame_number', self.update_frame_number,
-                             isparameter=False,
-                             forceint=True,
-                             label='Frame Number',
-                             valmin=0,
-                             valmax=len(self.images) - 1,
-                             valinit=0,
-                             )
-        self.register_slider('p_level', self.update_p_level,
-                             forceint=True,
-                             label='Pyramid Level',
-                             valmin=0,
-                             valmax=7,
-                             valinit=3,
-                             )
-        self.register_slider('filter_width', self.update_filter_width,
-                             label='Filter Width',
-                             valmin=0,
-                             valmax=10,
-                             valinit=0.8,
-                             )
-        self.register_slider('cutoff', self.update_cutoff,
-                             label='Amplitude Cutoff',
-                             valmin=0,
-                             valmax=10,
-                             valinit=1,
-                             )
-        self.register_slider('neighborhood', self.update_neighborhood,
-                             label='Neighborhood',
-                             forceint=True,
-                             valmin=1,
-                             valmax=100,
-                             valinit=10,
-                             )
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+                             label='Frame Number', isparameter=False, forceint=True)
+        self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
+                             forceint=True)
+        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=0.8,
+                             label='Filter Width')
+        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=1, label='Amplitude Cutoff')
+        self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
+                             label='Neighborhood', forceint=True)
 
     def load_frame(self):
         from fiber_locator import load_stab_img
-        image_path = self.images[int(self.sliders['frame_number'].val)]
+        image_path = self.images[self.slider_value('frame_number')]
         image = load_stab_img(image_path, self.stabilize_args)
 
         from fiducial_locator import load_fids
@@ -85,14 +59,14 @@ class BreakGUI(MPLGUI):
         self.recalculate_locations()
 
     def recalculate_blobs(self):
-        image = self.pyramid[self.sliders['p_level'].val]
-        self.filtered_image = make_log(image, self.sliders['filter_width'].val)
+        image = self.pyramid[self.slider_value('p_level')]
+        self.filtered_image = make_log(image, self.slider_value('filter_width'))
 
     def recalculate_locations(self):
         image = self.filtered_image
         rows, cols = image.shape
-        cutoff = self.sliders['cutoff'].val
-        neighborhood = self.sliders['neighborhood'].val
+        cutoff = self.slider_value('cutoff')
+        neighborhood = self.slider_value('neighborhood')
 
         row_index, col_index = peak_local_max(image, cutoff, neighborhood)
         self.locations = row_index / (rows - 1), col_index / (cols - 1)
@@ -101,8 +75,8 @@ class BreakGUI(MPLGUI):
     def refresh_plot(self):
         ax = self.axes['image']
         ax.clear()
-        # ax.imshow(cv2.resize(self.pyramid[self.sliders['p_level'].val], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
-        ax.imshow(self.pyramid[self.sliders['p_level'].val],
+        # ax.imshow(cv2.resize(self.pyramid[self.slider_value('p_level')], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
+        ax.imshow(self.pyramid[self.slider_value('p_level')],
                   cmap='gray',
                   extent=[0, 1, 1, 0],
                   aspect='auto',
@@ -113,7 +87,7 @@ class BreakGUI(MPLGUI):
 
         image = self.filtered_image
         if self.display_type == 'thresholded':
-            break_amp = self.sliders['cutoff'].val
+            break_amp = self.slider_value('cutoff')
             image = (image > break_amp).view(np.uint8)
         ax = self.axes['filtered']
         ax.clear()

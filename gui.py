@@ -4,7 +4,6 @@ from time import perf_counter
 
 from numbers import Integral as Int
 
-
 class NotImplementedAttribute:
     """http://stackoverflow.com/a/32536493/4504950"""
 
@@ -36,6 +35,25 @@ class MPLGUI:
     fig = NotImplementedAttribute()
     slider_coords = NotImplementedAttribute()
 
+    def create_layout(self):
+        raise NotImplementedError
+
+    def load_frame(self):
+        raise NotImplementedError
+
+    def recalculate_vision(self):
+        raise NotImplementedError
+
+    def refresh_plot(self):
+        raise NotImplementedError
+
+    def _validate_name(self,name):
+        if name in self.axes:
+            raise ValueError('Named axes already exist')
+
+    def _register_parameter(self, name):
+        self._parameter_sliders.append(name)
+
     def __init__(self,block=True):
         import matplotlib.pyplot as plt
 
@@ -58,22 +76,32 @@ class MPLGUI:
 
         plt.show()
 
-    def register_slider(self, name, callback, isparameter=True, forceint=False, **slider_kwargs):
-        if 'label' not in slider_kwargs:
-            slider_kwargs['label'] = name
+    def create_figure(self, size=(8,10)):
+        import matplotlib.pyplot as plt
+        self.fig = plt.figure(figsize=size)
+
+    def register_axis(self, name, coords):
+        self._validate_name(name)
+        self.axes[name] = self.fig.add_axes(coords, label=name)
+
+    def register_slider(self, name, callback, valmin, valmax, valinit=None, fmt=None, label=None, isparameter=True,
+                        forceint=False):
+        self._validate_name(name)
+        if label is None:
+            label = name
 
         slider_coords = self.slider_coords
-        ax = self.axes[name] = self.fig.add_axes(slider_coords)
+        ax = self.axes[name] = self.fig.add_axes(slider_coords, label=name)
         slider_coords[1] -= slider_coords[-1] * (5 / 3)
 
-        if 'valfmt' not in slider_kwargs:
+        if fmt is None:
             if forceint:
-                slider_kwargs['valfmt']='%d'
+                fmt= '%d'
             else:
-                slider_kwargs['valfmt']='%.3g'
+                fmt='%.3g'
 
         from matplotlib.widgets import Slider
-        sl = self.sliders[name] = Slider(ax, **slider_kwargs)
+        sl = self.sliders[name] = Slider(ax, valmin=valmin, valmax=valmax, valinit=valinit, valfmt=fmt, label=label)
 
         if isparameter:
             self._register_parameter(name)
@@ -85,34 +113,25 @@ class MPLGUI:
 
         sl.on_changed(callback)
 
-    def register_button(self, name, callback, coords, widget=None, **button_kwargs):
+    def slider_value(self,name):
+        return self.sliders[name].val
+
+    def register_button(self, name, callback, coords, widget=None, label=None):
+        self._validate_name(name)
         if widget is None:
             from matplotlib.widgets import Button as widget
+        else:
+            mod = __import__('matplotlib.widgets', fromlist=[widget])
+            widget = getattr(mod, widget)
 
-        if ('label' not in button_kwargs and
-            'label' in inspect.signature(widget).parameters):
-            button_kwargs['label'] = name
+        if (label is None and 'label' in inspect.signature(widget).parameters):
+            label = name
 
-        ax = self.axes[name] = self.fig.add_axes(coords)
-        b = self.buttons[name] = widget(ax, **button_kwargs)
+        ax = self.axes[name] = self.fig.add_axes(coords,label=name)
+        b = self.buttons[name] = widget(ax, label=label)
         b.on_clicked(callback)
-
-    def _register_parameter(self, name):
-        self._parameter_sliders.append(name)
 
     @property
     def parameters(self):
         sl = self.sliders
         return OrderedDict((name, sl[name].val) for name in self._parameter_sliders)
-
-    def create_layout(self):
-        raise NotImplementedError
-
-    def load_frame(self):
-        raise NotImplementedError
-
-    def recalculate_vision(self):
-        raise NotImplementedError
-
-    def refresh_plot(self):
-        raise NotImplementedError

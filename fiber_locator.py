@@ -3,9 +3,9 @@ from os import path
 import cv2
 import numpy as np
 
-from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
-from cvutil import make_pyramid, sobel_filter
+from cvutil import make_pyramid, sobel_filter, draw_line
 from gui import MPLGUI
+from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
 
 
 
@@ -19,54 +19,39 @@ class FiberGUI(MPLGUI):
         super().__init__()
 
     def create_layout(self):
-        import matplotlib.pyplot as plt
-        from matplotlib.widgets import RadioButtons
-        self.fig, self.axes['image'] = plt.subplots(figsize=(8, 10))
-        self.fig.subplots_adjust(left=0.1, bottom=0.3)
+        self.create_figure()
+        self.register_axis('image',[.1,.3,.8,.6])
 
         self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
         self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
-        self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget=RadioButtons,
+        self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget='RadioButtons',
                              labels=('original', 'filtered', 'edges', 'rotated'))
-        # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget=RadioButtons,
+        # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget='RadioButtons',
         #                      labels=('sobel', 'laplace'))
 
         self.slider_coords = [.3, .25, .55, .03]
-        self.register_slider('frame_number',self.update_frame_number,
-                             isparameter=False,
-                             forceint=True,
-                             label='Frame number',
-                             valmin=0,
-                             valmax=len(self.images) - 1,
-                             valinit=0,)
-        self.register_slider('threshold',self.update_edge,
-                             label='edge threshold',
-                             valmin=0,
-                             valmax=2 ** 9 - 1,
-                             valinit=70,
-                             )
-        self.register_slider('p_level', self.update_edge,
-                             forceint=True,
-                             label='Pyramid Level',
-                             valmin=0,
-                             valmax=7,
-                             valinit=0, )
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+                             label='Frame number', isparameter=False, forceint=True)
+        self.register_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
+                             label='edge threshold')
+        self.register_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=0, label='Pyramid Level',
+                             forceint=True)
         # self.register_slider('ksize', self.update_edge,
         #                      forceint=True,
         #                      label='Kernel size',
-        #                      valmin=0,
-        #                      valmax=5,
-        #                      valinit=0, )
+        #                      min=0,
+        #                      max=5,
+        #                      init=0, )
         # self.register_slider('iter', self.update_edge,
         #                      forceint=True,
         #                      label='morph. iterations',
-        #                      valmin=0,
-        #                      valmax=5,
-        #                      valinit=0, )
+        #                      min=0,
+        #                      max=5,
+        #                      init=0, )
 
 
     def load_frame(self):
-        image_path = self.images[self.sliders['frame_number'].val]
+        image_path = self.images[self.slider_value('frame_number')]
         self.tdi_array = image = _load_tdi_corrected(image_path)
         self.pyramid = make_pyramid(image)
 
@@ -75,8 +60,8 @@ class FiberGUI(MPLGUI):
         self.recalculate_lines()
 
     def recalculate_edges(self):
-        threshold = self.sliders['threshold'].val
-        p_level = self.sliders['p_level'].val
+        threshold = self.slider_value('threshold')
+        p_level = self.slider_value('p_level')
         image = self.pyramid[p_level]
         self.filtered = image = sobel_filter(image, 0, 1)
         self.edges = edges(image, threshold)
