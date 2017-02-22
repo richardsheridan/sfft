@@ -150,7 +150,7 @@ def fid_profile_from_image(image):
 
 
 def choose_fids(filtered_profile, fid_amp, mask_until):
-    l = len(filtered_profile)
+    l = len(filtered_profile)-1
     # only start looking after heuristic starting point
     # mask_until = int(.06 * l)
 
