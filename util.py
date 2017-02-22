@@ -322,28 +322,31 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
             max_indices.add(max_index)
 
     if subpixel:
-        max_indices = [quadratic_subpixel_extremum(image, max_index) for max_index in max_indices]
+        max_indices = [quadratic_subpixel_extremum_2d(image, max_index) for max_index in max_indices]
 
     # Emulate np.where behavior for empty max_indices with this special conditional expression
     return np.transpose(max_indices) if max_indices else (np.array([], dtype=int), np.array([], dtype=int))
 
 
-def quadratic_subpixel_extremum(image, max_index):
+def quadratic_subpixel_extremum_2d(image, max_index):
     # Image and Vision Computing, vol.20, no.13/14, pp.981-991, December 2002.
     # http://vision-cdc.csiro.au/changs/doc/sun02ivc.pdf
     y, x = max_index
 
     # optimization: grab the image pixel values as python floats in local variables
     image_item = image.item
-    bmm = image_item((y - 1, x - 1))
-    b0m = image_item((y - 1, x))
-    bpm = image_item((y - 1, x + 1))
-    bm0 = image_item((y, x - 1))
-    b00 = image_item((y, x))
-    bp0 = image_item((y, x + 1))
-    bmp = image_item((y + 1, x - 1))
-    b0p = image_item((y + 1, x))
-    bpp = image_item((y + 1, x + 1))
+    try:
+        bmm = image_item((y - 1, x - 1))
+        b0m = image_item((y - 1, x))
+        bpm = image_item((y - 1, x + 1))
+        bm0 = image_item((y, x - 1))
+        b00 = image_item((y, x))
+        bp0 = image_item((y, x + 1))
+        bmp = image_item((y + 1, x - 1))
+        b0p = image_item((y + 1, x))
+        bpp = image_item((y + 1, x + 1))
+    except IndexError:
+        return max_index
 
     # estimate the coefficients of G(x,y)=Axx+Bxy+Cyy+Dx+Ey+F by finite difference
     # the coordinate system origin is implicitly shifted to (x,y) from max_index
@@ -367,3 +370,31 @@ def quadratic_subpixel_extremum(image, max_index):
             return y + subpixel_y, x + subpixel_x,  # subpx_max_val
 
     return y, x,  # b00
+
+
+def quadratic_subpixel_extremum_1d(profile, max_index):
+    # optimization: grab the image pixel values as python floats in local variables
+    profile_item = profile.item
+    try:
+        bm = profile_item(max_index - 1)
+        b0 = profile_item(max_index)
+        bp = profile_item(max_index + 1)
+    except IndexError:
+        return max_index
+
+    # estimate the coefficients of D(x)=Axx+Bx+C by finite difference
+    # the coordinate system origin is implicitly shifted to x from max_index
+    A = (bm + bp) / 2 - b0
+    B = (bm - bp) / 2
+    # C = b0
+
+    # Solve the system Gx(x) = 0 for the quadratic extremum
+    if A:  # eliminate divide by zero problems
+        subpixel_x = -B / 2 / A
+
+        # check for badly behaved estimates, possibly due to noise?
+        if -1.0 < subpixel_x < 1.0:
+            # subpx_max_val = A * subpixel_x ** 2 + B * subpixel_x + C
+            return max_index + subpixel_x # ,subpx_max_val
+
+    return max_index
