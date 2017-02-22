@@ -7,6 +7,9 @@ from scipy.signal import fftconvolve as convolve, ricker, gaussian
 from numbers import Integral as Int, Number
 
 STABILIZE_PREFIX = 'stab_'
+VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
+VALID_ZERO_CROSSING_DIRECTIONS = frozenset(('upward', 'downward', 'all'))
+
 DISPLAY_SIZE = (1200, 450)
 
 PIXEL_SIZE_X = .7953179315  # microns per pixel
@@ -148,6 +151,8 @@ def wavelet_filter(series, sigma, bandwidth=None):
 
 def find_zero_crossings(smooth_series, direction='downward'):
     series_shifted_left = np.roll(smooth_series, shift=-1, axis=-1)
+    if direction not in VALID_ZERO_CROSSING_DIRECTIONS:
+        raise ValueError('Invalid choice of direction:', direction)
     if direction == 'downward':
         candidate_crossings = (smooth_series >= 0) & (series_shifted_left < 0)
     elif direction == 'upward':
@@ -155,7 +160,7 @@ def find_zero_crossings(smooth_series, direction='downward'):
     elif direction == 'all':
         candidate_crossings = (smooth_series * series_shifted_left < 0) | (smooth_series == 0)
     else:
-        raise ValueError('Invalid choice of direction:', direction)
+        raise AssertionError('should not get here, check to see if you covered every choice for direction')
     candidate_crossings[-1] = 0
 
     return candidate_crossings
@@ -164,15 +169,25 @@ def find_zero_crossings(smooth_series, direction='downward'):
 def path_with_stab(path):
     dirname, filename = os.path.split(path)
     filename, ext = os.path.splitext(filename)
+    if ext.lower() not in VALID_IMAGE_EXTENSIONS:
+        raise ValueError('File has invalid file extension.', ext)
+    if '.' in filename:
+        import warnings
+        warnings.warn('Better not have periods in your filenames, it might break things')
+
     if filename.lower().startswith(STABILIZE_PREFIX):
         return path
     else:
         return os.path.join(dirname, STABILIZE_PREFIX + filename + '.jpg')
 
 
-def basename_without_stab(images):
-    name_gen = (os.path.splitext(os.path.basename(x))[0].lower() for x in images)
-    return [x[len(STABILIZE_PREFIX):] if x.startswith(STABILIZE_PREFIX) else x for x in name_gen]
+def basename_without_stab(image_path):
+    image_path = os.path.splitext(os.path.basename(image_path))[0]
+
+    if image_path.lower().startswith(STABILIZE_PREFIX):
+        image_path = image_path[len(STABILIZE_PREFIX):]
+
+    return image_path
 
 
 def parse_strain_headers(straindatpath):
