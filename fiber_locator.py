@@ -78,56 +78,23 @@ class FiberGUI(MPLGUI):
         self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
         self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
 
-    def draw_line(self, image_array, color=255, thickness=2):
-        x_size = image_array.shape[1]
-        max_chunk = 2 ** 14
-        chunks = x_size // max_chunk
-        image_parts = []
-        for chunk in range(chunks):
-            x0 = max_chunk * chunk
-            y0 = int(x0 * self.slope + self.intercept)
-            x1 = max_chunk * (chunk + 1)
-            y1 = int(x1 * self.slope + self.intercept)
-            image_parts.append(cv2.line(image_array[:, x0:x1],
-                                        (0, y0),
-                                        (max_chunk, y1),
-                                        color,
-                                        thickness,
-                                        ))
-        remainder = x_size % max_chunk
-        if remainder:
-            x0 = max_chunk * chunks
-            y0 = int(x0 * self.slope + self.intercept)
-            x1 = x_size - 1
-            y1 = int(x1 * self.slope + self.intercept)
-            image_parts.append(cv2.line(image_array[:, x0:x1],
-                                        (0, y0),
-                                        (x1 - x0, y1),
-                                        color,
-                                        thickness,
-                                        ))
-
-        output = np.hstack(image_parts)
-
-        return output
-
     def refresh_plot(self):
         self.axes['image'].clear()
         label = self.display_type
         if label == 'original':
             image = self.tdi_array.copy()
-            image = self.draw_line(image, 0)
+            image = draw_line(image, self.slope, self.intercept, 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
-            for i in reversed(range(self.sliders['p_level'].val)):
+            for i in reversed(range(self.slider_value('p_level'))):
                 image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
 
-            image = self.draw_line(image, float(image.max()))
+            image = draw_line(image, self.slope, self.intercept, float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
-            for i in reversed(range(self.sliders['p_level'].val)):
+            for i in reversed(range(self.slider_value('p_level'))):
                 image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
-            image = self.draw_line(image, 255)
+            image = draw_line(image, self.slope, self.intercept, 255)
         elif label == 'rotated':
             image = self.tdi_array.copy()
             image = rotate_fiber(image, self.vshift, self.theta)

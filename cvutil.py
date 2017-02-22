@@ -1,4 +1,5 @@
 import cv2
+import numpy
 import numpy as np
 
 
@@ -93,3 +94,36 @@ def max_filter(image, neighborhood=1, elliptical=True):
 
     return cv2.dilate(image, footprint, borderType=cv2.BORDER_REPLICATE)
 
+
+def draw_line(image_array, slope, intercept, color=255, thickness=2):
+    x_size = image_array.shape[1]
+    max_chunk = 2 ** 14
+    chunks = x_size // max_chunk
+    image_parts = []
+    for chunk in range(chunks):
+        x0 = max_chunk * chunk
+        y0 = int(x0 * slope + intercept)
+        x1 = max_chunk * (chunk + 1)
+        y1 = int(x1 * slope + intercept)
+        image_parts.append(cv2.line(image_array[:, x0:x1],
+                                    (0, y0),
+                                    (max_chunk, y1),
+                                    color,
+                                    thickness,
+                                    ))
+    remainder = x_size % max_chunk
+    if remainder:
+        x0 = max_chunk * chunks
+        y0 = int(x0 * slope + intercept)
+        x1 = x_size - 1
+        y1 = int(x1 * slope + intercept)
+        image_parts.append(cv2.line(image_array[:, x0:x1],
+                                    (0, y0),
+                                    (x1 - x0, y1),
+                                    color,
+                                    thickness,
+                                    ))
+
+    output = np.hstack(image_parts)
+
+    return output
