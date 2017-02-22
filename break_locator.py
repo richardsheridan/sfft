@@ -187,7 +187,7 @@ def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_a
 
 def save_breaks(parameters, breaks, images):
     folder = path.dirname(images[0])
-    fnames = basename_without_stab(images)
+    fnames = [basename_without_stab(image) for image in images]
 
     headers = dict(parameters)
     headers['fields'] = 'name: [locations, relative_locations]'

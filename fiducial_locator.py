@@ -230,7 +230,7 @@ def load_fids(image_path, image=None, fid_args=()):
     lpath = image_path.lower()
     dirname = path.dirname(lpath)
     fid_file = path.join(dirname, FIDUCIAL_FILENAME)
-    basename = basename_without_stab([image_path])[0]
+    basename = basename_without_stab(image_path)
     try:  # if os.path.exists(fid_file):
         with open(fid_file) as fp:
             import json
@@ -266,7 +266,7 @@ def save_fids(parameters, images, left_fids, right_fids):
 
     folder = path.dirname(images[0])
 
-    fnames = basename_without_stab(images)
+    fnames = [basename_without_stab(image) for image in images]
     print('Saving parameters and locations to:')
     fidpath = path.join(folder, FIDUCIAL_FILENAME)
     print(fidpath)
