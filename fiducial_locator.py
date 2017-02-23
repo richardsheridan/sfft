@@ -1,6 +1,5 @@
 from os import path
 
-import cv2
 import numpy as np
 
 from cvutil import make_pyramid
@@ -72,10 +71,11 @@ class FidGUI(MPLGUI):
         ax = self.axes['image']
         ax.clear()
         display_image = self.pyramid[self.slider_value('p_level')]
-        ax.imshow(cv2.resize(display_image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC), cmap='gray')
-        self.artists['image_fids'] = ax.plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
-        ax.autoscale_view(tight=True)
-        self.artists['image_fids'].set_xdata(self.locations * DISPLAY_SIZE[0])
+        r, c = display_image.shape
+        ax.imshow(display_image, cmap='gray', aspect='auto')
+        for loc in self.locations:
+            name = 'image_fids_{}'.format(loc)
+            self.artists[name] = ax.axvline(loc * c, color='r')
 
         l = len(self.filtered_profile)
         locations = self.locations * l
@@ -197,11 +197,12 @@ def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
     else:
         raise ValueError('Unknown type', type(image))
 
-    profile = fid_profile_from_image(pyramid[p_level])
-    filter_width = filter_width * len(profile)
-    profile = wavelet_filter(profile, filter_width)
+    pyramid_image = pyramid[p_level]
+    profile = fid_profile_from_image(pyramid_image)
+    filter_width_pixels = filter_width * len(profile)
     left_grip_index, right_grip_index = find_grips(profile)
-    return choose_fids(profile, cutoff, left_grip_index)
+    filtered_profile = wavelet_filter(profile, filter_width_pixels)
+    return choose_fids(filtered_profile, cutoff, left_grip_index)
 
 
 class NoPeakError(Exception):

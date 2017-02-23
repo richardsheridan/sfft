@@ -1,13 +1,9 @@
 from os import path
 
-import cv2
-import numpy as np
-
-from cvutil import make_pyramid, sobel_filter, draw_line
+from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, load_tdi_and_correct_aspect, fit_line_moments, \
+    rotate_fiber, imwrite, imread
 from gui import MPLGUI
-from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, PIXEL_SIZE_X, PIXEL_SIZE_Y, DISPLAY_SIZE
-
-
+from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
 STABILIZE_FILENAME = 'stabilize.json'
 
@@ -20,16 +16,15 @@ class FiberGUI(MPLGUI):
 
     def create_layout(self):
         self.create_figure()
-        self.register_axis('image',[.1,.3,.8,.6])
+        self.register_axis('image', [.1, .3, .8, .55])
 
-        self.register_button('display', self.display_external, [.3, .95, .2, .03], label='Display full')
-        self.register_button('save', self.execute_batch, [.3, .90, .2, .03], label='Save batch')
+        self.register_button('save', self.execute_batch, [.3, .92, .2, .05], label='Save batch')
         self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget='RadioButtons',
                              labels=('original', 'filtered', 'edges', 'rotated'))
         # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget='RadioButtons',
         #                      labels=('sobel', 'laplace'))
 
-        self.slider_coords = [.3, .25, .55, .03]
+        self.slider_coords = [.3, .2, .55, .03]
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
                              label='Frame number', isparameter=False, forceint=True)
         self.register_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
@@ -52,7 +47,7 @@ class FiberGUI(MPLGUI):
 
     def load_frame(self):
         image_path = self.images[self.slider_value('frame_number')]
-        self.tdi_array = image = _load_tdi_corrected(image_path)
+        self.tdi_array = image = load_tdi_and_correct_aspect(image_path)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
@@ -73,7 +68,7 @@ class FiberGUI(MPLGUI):
 
         # slope, intercept, theta = fit_line_fitline(processed_image_array)
 
-        self.vshift = _vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
+        self.vshift = vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
 
         self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
         self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
@@ -86,14 +81,12 @@ class FiberGUI(MPLGUI):
             image = draw_line(image, self.slope, self.intercept, 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
-            for i in reversed(range(self.slider_value('p_level'))):
-                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+            image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
 
             image = draw_line(image, self.slope, self.intercept, float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
-            for i in reversed(range(self.slider_value('p_level'))):
-                image = cv2.pyrUp(image, dstsize=self.pyramid[i].shape[::-1])
+            image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
             image = draw_line(image, self.slope, self.intercept, 255)
         elif label == 'rotated':
             image = self.tdi_array.copy()
@@ -103,15 +96,9 @@ class FiberGUI(MPLGUI):
             return
 
         self.display_image_array = image  # .astype('uint8')
-        image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
-        self.axes['image'].imshow(image, cmap='gray')
+        # image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
+        self.axes['image'].imshow(image, cmap='gray', aspect='auto')
         self.fig.canvas.draw()
-
-    def display_external(self, event):
-        cv2.namedWindow('display_external', cv2.WINDOW_NORMAL)
-        cv2.imshow('display_external', self.display_image_array)
-        key = cv2.waitKey(0)
-        cv2.destroyAllWindows()
 
     def set_display_type(self, label):
         self.display_type = label
@@ -150,136 +137,8 @@ class FiberGUI(MPLGUI):
         self.refresh_plot()
 
 
-
-def _si_from_ct(centroid, theta):
-    slope = np.tan(theta)
-    intercept = centroid[1] - slope * centroid[0]
-    return slope, intercept
-
-
-def _vshift_from_si_shape(slope, intercept, shape):
-    x_middle = shape[1] // 2
-    y_middle = x_middle * slope + intercept
-    return shape[0] // 2 - y_middle
-
-
-def _load_tdi_corrected(image_path):
-    tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
-    y, x = tdi_array.shape
-    y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
-    # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
-
-    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
-    # tdi_array = clahe.apply(tdi_array)
-
-    tdi_array = cv2.resize(tdi_array, dsize=(x, y), interpolation=cv2.INTER_CUBIC)
-
-    return tdi_array
-
-
-def fit_line_moments(processed_image_array):
-    """
-    Use moments to generate whole-image centroid and angle
-    works with grayscale data
-
-    :param processed_image_array:
-    :return slope, intercept, theta:
-    """
-
-    moments = cv2.moments(processed_image_array, True)
-
-    m00 = moments['m00']
-    if not m00:
-        return 0, processed_image_array.shape[0] / 2, 0
-
-    centroid = np.array((moments['m10'] / m00, moments['m01'] / m00))
-
-    theta = np.arctan2(2 * moments['mu11'], (moments['mu20'] - moments['mu02'])) / 2
-    slope, intercept = _si_from_ct(centroid, theta)
-    return slope, intercept, theta
-
-
-def fit_line_fitline(processed_image_array):
-    """
-    cv2.fitLine internally uses moments, but may iteratively reweight them for robust fit based on DIST_
-    but points must be extracted manually
-
-    :param processed_image_array:
-    :return slope, intercept, theta:
-    """
-    points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
-    line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
-    centroid = line[2:]
-    theta = np.arctan2(line[1], line[0])
-    slope, intercept = _si_from_ct(centroid, theta)
-    return slope, intercept, theta
-
-
-def edges(filtered_image, threshold, iterations=0):
-    edges = (filtered_image > threshold).view('uint8')
-
-    if iterations:
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        edges = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=iterations)
-        # edges = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
-    return edges
-
-
-def rotate_fiber(image, vshift, theta):
-    y_size, x_size = image.shape
-    mean = int(image.mean())
-    translation = np.float32([[1, 0, 0], [0, 1, vshift]])
-    # aspect = 2.2894
-    # stretch = np.float32([[aspect, 0, 0], [0, 1, 0]])
-    # translation = _compose(translation,stretch)
-    # theta = np.atan(2*np.tan(theta))
-    theta_deg = theta * 180 / np.pi
-
-    # rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
-    # transform = _compose(rotation, translation)
-    # return cv2.warpAffine(image, transform, (x_size, y_size), borderValue=mean)
-
-    x_size = image.shape[1]
-    max_chunk = 2 ** 15
-    patchwidth = 20
-    chunks = x_size // max_chunk
-    image_parts = []
-    for chunk in range(chunks):
-        x0 = max_chunk * chunk
-        x1 = x0 + max_chunk
-        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
-        transform = _compose(rotation, translation)
-        image_parts.append(cv2.warpAffine(image[:, x0:x1], transform, (max_chunk, y_size),
-                                          borderMode=cv2.BORDER_REPLICATE))  # borderValue=mean))
-
-    if x_size % max_chunk:
-        x0 = max_chunk * chunks
-        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
-        transform = _compose(rotation, translation)
-        image_parts.append(cv2.warpAffine(image[:, x0:], transform, (x_size - x0, y_size),
-                                          borderMode=cv2.BORDER_REPLICATE))  #borderValue=mean))
-
-    output = np.hstack(image_parts)
-
-    for chunk in range(chunks):
-        x0 = max_chunk * chunk
-        x1 = x0 + max_chunk
-
-        px1 = x1 + patchwidth // 2
-        if px1 >= x_size:
-            px1 = x_size
-        px0 = x1 - patchwidth // 2
-        rotation = cv2.getRotationMatrix2D((x_size // 2 - px0, y_size // 2), theta_deg, 1)
-        transform = _compose(rotation, translation)
-        cv2.warpAffine(image[:, px0:px1], transform, (patchwidth, y_size), dst=output[:, px0:px1],
-                       borderMode=cv2.BORDER_REPLICATE)  # borderValue=mean)
-
-    return output
-
-
-def _compose(a, b):
-    return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]
+def edges(filtered_image, threshold):
+    return (filtered_image > threshold).view('uint8')
 
 
 def load_stab_data(stabilized_image_path):
@@ -299,32 +158,32 @@ def load_stab_data(stabilized_image_path):
 def load_stab_img(image_path, *stabilize_args):
     stabilized_image_path = path_with_stab(image_path)
     if path.exists(stabilized_image_path):
-        image = cv2.imread(stabilized_image_path, cv2.IMREAD_GRAYSCALE)
+        image = imread(stabilized_image_path)
         # vshift, theta = load_stab_data(stabilized_image_path)
     elif stabilize_args:
         image = stabilize_file(image_path, *stabilize_args, return_image=True)
     else:
         #TODO: do we really want to silently fall back to opening the unstabilized TDI
-        image = _load_tdi_corrected(image_path)
+        image = load_tdi_and_correct_aspect(image_path)
     return image
 
 
 def stabilize_file(image_path, threshold, p_level, return_image=False, save_image=False):
     dir, fname = path.split(image_path)
     print('Loading:', fname)
-    image = _load_tdi_corrected(image_path)
+    image = load_tdi_and_correct_aspect(image_path)
     pyramid = make_pyramid(image, p_level)
     edgeimage = sobel_filter(pyramid[p_level], 0, 1)
     edgeimage = edges(edgeimage, threshold)
     slope, intercept, theta = fit_line_moments(edgeimage)
     intercept = intercept / edgeimage.shape[0] * image.shape[0]
-    vshift = _vshift_from_si_shape(slope, intercept, image.shape)
+    vshift = vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta)
     if save_image:
         savename = STABILIZE_PREFIX + path.splitext(fname)[0] + '.jpg'
         print('Saving: ' + savename)
-        cv2.imwrite(path.join(dir, savename), image)
+        imwrite(path.join(dir, savename), image)
     if return_image:
         return image
     return vshift, theta

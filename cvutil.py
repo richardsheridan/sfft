@@ -1,6 +1,8 @@
 import cv2
-import numpy
+
 import numpy as np
+
+from util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
 
 
 def arg_min_max(image_array, return_values=False):
@@ -127,3 +129,120 @@ def draw_line(image_array, slope, intercept, color=255, thickness=2):
     output = np.hstack(image_parts)
 
     return output
+
+
+def imwrite(filename, img, params):
+    return cv2.imwrite(filename, img, params)
+
+
+def imread(filename):
+    return cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+
+
+def load_tdi_and_correct_aspect(image_path):
+    tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
+    y, x = tdi_array.shape
+    y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size
+    # x = int(x * PIXEL_SIZE_X / PIXEL_SIZE_Y) # grow x to match y pixel size
+
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(int(x / 2750),) * 2)
+    # tdi_array = clahe.apply(tdi_array)
+
+    tdi_array = cv2.resize(tdi_array, dsize=(x, y), interpolation=cv2.INTER_CUBIC)
+
+    return tdi_array
+
+
+def fit_line_fitline(processed_image_array):
+    """
+    cv2.fitLine internally uses moments, but may iteratively reweight them for robust fit based on DIST_
+    but points must be extracted manually
+
+    :param processed_image_array:
+    :return slope, intercept, theta:
+    """
+    points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
+    line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
+    centroid = line[2:]
+    theta = np.arctan2(line[1], line[0])
+    slope, intercept = si_from_ct(centroid, theta)
+    return slope, intercept, theta
+
+
+def fit_line_moments(processed_image_array):
+    """
+    Use moments to generate whole-image centroid and angle
+    works with grayscale data
+
+    :param processed_image_array:
+    :return slope, intercept, theta:
+    """
+
+    moments = cv2.moments(processed_image_array, True)
+
+    m00 = moments['m00']
+    if not m00:
+        return 0, processed_image_array.shape[0] / 2, 0
+
+    centroid = np.array((moments['m10'] / m00, moments['m01'] / m00))
+
+    theta = np.arctan2(2 * moments['mu11'], (moments['mu20'] - moments['mu02'])) / 2
+    slope, intercept = si_from_ct(centroid, theta)
+    return slope, intercept, theta
+
+
+def rotate_fiber(image, vshift, theta):
+    y_size, x_size = image.shape
+    mean = int(image.mean())
+    translation = np.float32([[1, 0, 0], [0, 1, vshift]])
+    # aspect = 2.2894
+    # stretch = np.float32([[aspect, 0, 0], [0, 1, 0]])
+    # translation = _compose(translation,stretch)
+    # theta = np.atan(2*np.tan(theta))
+    theta_deg = theta * 180 / np.pi
+
+    # rotation = cv2.getRotationMatrix2D((x_size // 2, y_size // 2), theta_deg, 1)
+    # transform = _compose(rotation, translation)
+    # return cv2.warpAffine(image, transform, (x_size, y_size), borderValue=mean)
+
+    x_size = image.shape[1]
+    max_chunk = 2 ** 15
+    patchwidth = 20
+    chunks = x_size // max_chunk
+    image_parts = []
+    for chunk in range(chunks):
+        x0 = max_chunk * chunk
+        x1 = x0 + max_chunk
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        image_parts.append(cv2.warpAffine(image[:, x0:x1], transform, (max_chunk, y_size),
+                                          borderMode=cv2.BORDER_REPLICATE))  # borderValue=mean))
+
+    if x_size % max_chunk:
+        x0 = max_chunk * chunks
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - x0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        image_parts.append(cv2.warpAffine(image[:, x0:], transform, (x_size - x0, y_size),
+                                          borderMode=cv2.BORDER_REPLICATE))  # borderValue=mean))
+
+    output = np.hstack(image_parts)
+
+    for chunk in range(chunks):
+        x0 = max_chunk * chunk
+        x1 = x0 + max_chunk
+
+        px1 = x1 + patchwidth // 2
+        if px1 >= x_size:
+            px1 = x_size
+        px0 = x1 - patchwidth // 2
+        rotation = cv2.getRotationMatrix2D((x_size // 2 - px0, y_size // 2), theta_deg, 1)
+        transform = _compose(rotation, translation)
+        cv2.warpAffine(image[:, px0:px1], transform, (patchwidth, y_size), dst=output[:, px0:px1],
+                       borderMode=cv2.BORDER_REPLICATE)  # borderValue=mean)
+
+    return output
+
+
+def _compose(a, b):
+    return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]

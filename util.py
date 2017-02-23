@@ -398,3 +398,15 @@ def quadratic_subpixel_extremum_1d(profile, max_index):
             return max_index + subpixel_x # ,subpx_max_val
 
     return max_index
+
+
+def vshift_from_si_shape(slope, intercept, shape):
+    x_middle = shape[1] // 2
+    y_middle = x_middle * slope + intercept
+    return shape[0] // 2 - y_middle
+
+
+def si_from_ct(centroid, theta):
+    slope = np.tan(theta)
+    intercept = centroid[1] - slope * centroid[0]
+    return slope, intercept
