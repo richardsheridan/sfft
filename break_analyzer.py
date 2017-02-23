@@ -53,11 +53,7 @@ def analyze_breaks(directory, stabilize_args=()):
         for break_centroid in zip(break_y[sortind], break_x[sortind]):
             print('Centroid: ', break_centroid)
             break_image = select_break_image(image, break_centroid)
-            # if '27' in name:
-            #     import matplotlib.pyplot as plt
-            #     plt.imshow(break_image, cmap='gray')
-            #     plt.show(1)
-            (_, left_edge), (_, right_edge) = find_gap_edges(break_image)
+            (left_edge_y, left_edge), (right_edge_y, right_edge) = find_gap_edges(break_image)
             print('Left edge: ', left_edge)
             print('Right edge: ', right_edge)
             top_side, bottom_side = find_fiber_sides(break_image, left_edge, right_edge)
@@ -65,8 +61,17 @@ def analyze_breaks(directory, stabilize_args=()):
             print('Bottom side: ', bottom_side)
             gap_width = right_edge - left_edge
             fiber_diameter = top_side - bottom_side
-            print('Gap width: ', gap_width)
-            print('Fiber diameter', fiber_diameter)
+            print('Gap width: ', gap_width * PIXEL_SIZE_X, ' um')
+            print('Fiber diameter', fiber_diameter * PIXEL_SIZE_X, ' um')
+            if '0' in name:
+                import matplotlib.pyplot as plt
+                plt.imshow(break_image, cmap='gray')
+                plt.plot([left_edge, right_edge], [left_edge_y, right_edge_y], 'rx')
+                plt.axvline(left_edge, linestyle=':', color='red')
+                plt.axvline(right_edge, linestyle=':', color='red')
+                plt.axhline(top_side, linestyle=':', color='green')
+                plt.axhline(bottom_side, linestyle=':', color='green')
+                plt.show(1)
 
 
 if __name__ == '__main__':
