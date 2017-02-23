@@ -75,7 +75,7 @@ def make_dog(image, sigma_wide, sigma_narrow):
     image = np.float32(image)
     image = (cv2.GaussianBlur(image, (0, 0), sigma_wide, borderType=cv2.BORDER_REPLICATE) -
              cv2.GaussianBlur(image, (0, 0), sigma_narrow, borderType=cv2.BORDER_REPLICATE))
-    image /= cv2.meanStdDev(image)[1]
+    image /= cv2.norm(image) / np.sqrt(image.size)
     return image
 
 def make_log(image, sigma):
@@ -83,7 +83,7 @@ def make_log(image, sigma):
     if sigma > 0:
         image = cv2.GaussianBlur(image, (0, 0), sigma, borderType=cv2.BORDER_REPLICATE)
     image = cv2.Laplacian(image, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
-    image /= cv2.meanStdDev(image)[1]
+    image /= cv2.norm(image) / np.sqrt(image.size)
     return image
 
 def max_filter(image, neighborhood=1, elliptical=True):
