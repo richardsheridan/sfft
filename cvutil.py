@@ -131,8 +131,8 @@ def draw_line(image_array, slope, intercept, color=255, thickness=2):
     return output
 
 
-def imwrite(filename, img, params):
-    return cv2.imwrite(filename, img, params)
+def imwrite(filename, img):
+    return cv2.imwrite(filename, img)
 
 
 def imread(filename):
@@ -249,4 +249,4 @@ def _compose(a, b):
 
 
 def binary_threshold(image, threshold):
-    return cv2.threshold(image,threshold,255,cv2.THRESH_BINARY)
+    return cv2.threshold(image, threshold, 255, cv2.THRESH_BINARY)[1]
