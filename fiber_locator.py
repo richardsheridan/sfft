@@ -1,7 +1,7 @@
 from os import path
 
 from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, load_tdi_and_correct_aspect, fit_line_moments, \
-    rotate_fiber, imwrite, imread
+    rotate_fiber, imwrite, imread, binary_threshold
 from gui import MPLGUI
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
@@ -59,7 +59,7 @@ class FiberGUI(MPLGUI):
         p_level = self.slider_value('p_level')
         image = self.pyramid[p_level]
         self.filtered = image = sobel_filter(image, 0, 1)
-        self.edges = edges(image, threshold)
+        self.edges = binary_threshold(image, threshold)
 
     def recalculate_lines(self):
         processed_image_array = self.edges
@@ -137,10 +137,6 @@ class FiberGUI(MPLGUI):
         self.refresh_plot()
 
 
-def edges(filtered_image, threshold):
-    return (filtered_image > threshold).view('uint8')
-
-
 def load_stab_data(stabilized_image_path):
     dirname, basename = path.split(stabilized_image_path)
     datfile = path.join(dirname, STABILIZE_FILENAME)
@@ -174,7 +170,7 @@ def stabilize_file(image_path, threshold, p_level, return_image=False, save_imag
     image = load_tdi_and_correct_aspect(image_path)
     pyramid = make_pyramid(image, p_level)
     edgeimage = sobel_filter(pyramid[p_level], 0, 1)
-    edgeimage = edges(edgeimage, threshold)
+    edgeimage = binary_threshold(edgeimage, threshold)
     slope, intercept, theta = fit_line_moments(edgeimage)
     intercept = intercept / edgeimage.shape[0] * image.shape[0]
     vshift = vshift_from_si_shape(slope, intercept, image.shape)

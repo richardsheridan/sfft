@@ -246,3 +246,7 @@ def rotate_fiber(image, vshift, theta):
 
 def _compose(a, b):
     return np.dot(np.vstack((a, (0, 0, 1))), np.vstack((b, (0, 0, 1))))[:-1, :]
+
+
+def binary_threshold(image, threshold):
+    return cv2.threshold(image,threshold,255,cv2.THRESH_BINARY)
