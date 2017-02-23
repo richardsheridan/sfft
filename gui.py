@@ -116,7 +116,7 @@ class MPLGUI:
     def slider_value(self,name):
         return self.sliders[name].val
 
-    def register_button(self, name, callback, coords, widget=None, label=None):
+    def register_button(self, name, callback, coords, widget=None, label=None, labels=None):
         self._validate_name(name)
         if widget is None:
             from matplotlib.widgets import Button as widget
@@ -124,11 +124,18 @@ class MPLGUI:
             mod = __import__('matplotlib.widgets', fromlist=[widget])
             widget = getattr(mod, widget)
 
-        if (label is None and 'label' in inspect.signature(widget).parameters):
-            label = name
+        widgetkwargs = {}
+        if 'label' in inspect.signature(widget).parameters:
+            if label is None:
+                widgetkwargs['label'] = name
+            else:
+                widgetkwargs['label'] = label
+
+        if (labels is not None and 'labels' in inspect.signature(widget).parameters):
+            widgetkwargs['labels'] = labels
 
         ax = self.axes[name] = self.fig.add_axes(coords,label=name)
-        b = self.buttons[name] = widget(ax, label=label)
+        b = self.buttons[name] = widget(ax, **widgetkwargs)
         b.on_clicked(callback)
 
     @property
