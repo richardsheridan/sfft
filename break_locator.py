@@ -22,8 +22,8 @@ class BreakGUI(MPLGUI):
     def create_layout(self):
 
         self.create_figure()
-        self.register_axis('image',[.1,.62,.8,.3])
-        self.register_axis('filtered',[.1,.29,.8,.3])
+        self.register_axis('image', [.1, .65, .8, .25])
+        self.register_axis('filtered', [.1, .37, .8, .25])
         # self.artists['profile'] = self.axes['profile'].plot(0)[0]
         # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
@@ -31,7 +31,7 @@ class BreakGUI(MPLGUI):
         self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget='RadioButtons',
                              labels=('filtered', 'thresholded',))
 
-        self.slider_coords = [.3, .22, .55, .03]
+        self.slider_coords = [.3, .3, .55, .03]
 
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
                              label='Frame Number', isparameter=False, forceint=True)
@@ -39,6 +39,7 @@ class BreakGUI(MPLGUI):
                              forceint=True)
         self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=0.8,
                              label='Filter Width')
+        self.register_slider('mask_width', self.update_mask, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
         self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=1, label='Amplitude Cutoff')
         self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
                              label='Neighborhood', forceint=True)
@@ -63,12 +64,15 @@ class BreakGUI(MPLGUI):
         self.filtered_image = make_log(image, self.slider_value('filter_width'))
 
     def recalculate_locations(self):
-        image = self.filtered_image
-        rows, cols = image.shape
+        filtered_image = self.filtered_image
+        rows, cols = filtered_image.shape
         cutoff = self.slider_value('cutoff')
         neighborhood = self.slider_value('neighborhood')
+        mask_width = self.slider_value('mask_width')
 
-        row_index, col_index = peak_local_max(image, cutoff, neighborhood)
+        row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
+        row_index, col_index = mask_stray_peaks(row_index, col_index, mask_width, rows)
+
         self.locations = row_index / (rows - 1), col_index / (cols - 1)
         print(len(row_index))
 
@@ -100,6 +104,11 @@ class BreakGUI(MPLGUI):
         self.artists['image_breaks'] = ax.plot(self.locations[1],  # * DISPLAY_SIZE[0],
                                                self.locations[0],  # * DISPLAY_SIZE[1],
                                                'rx', ms=10)[0]
+
+        mask_width = self.slider_value('mask_width')
+        self.artists['mask_lines'] = [ax.axhline(mask_width, color='r'),
+                                      ax.axhline(1 - mask_width, color='r'),
+                                      ]
 
         self.fig.canvas.draw()
 
@@ -135,11 +144,21 @@ class BreakGUI(MPLGUI):
 
     def set_display_type(self, label):
         self.display_type = label
+        self.refresh_plot()
 
+    def update_mask(self, val):
+        self.recalculate_locations()
         self.refresh_plot()
 
 
-def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
+def mask_stray_peaks(row_index, col_index, mask_width, rows):
+    min_row = int(rows * mask_width)
+    max_row = rows - 1 - min_row
+    keep = (min_row <= row_index) & (row_index <= max_row)
+    return row_index[keep], col_index[keep]
+
+
+def locate_breaks(image_path, p_level, filter_width, mask_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
     from fiber_locator import load_stab_img
     image = load_stab_img(image_path, *stabilize_args)
@@ -153,10 +172,13 @@ def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_a
     filtered_image = make_log(image, filter_width)
 
     row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
+    row_index, col_index = mask_stray_peaks(row_index, col_index, mask_width, rows)
+
     # TODO: sort these?
     locations = row_index / (rows - 1), col_index / (cols - 1)
     relative_locations = (locations[1] - fids[0]) / (fids[1] - fids[0])
-    return locations, relative_locations
+    fiducial_break_count = np.count_nonzero((0 < relative_locations) & (relative_locations < 1))
+    return locations, relative_locations, fiducial_break_count
 
 
 def save_breaks(parameters, breaks, images):
@@ -164,8 +186,9 @@ def save_breaks(parameters, breaks, images):
     fnames = [basename_without_stab(image) for image in images]
 
     headers = dict(parameters)
-    headers['fields'] = 'name: [locations, relative_locations]'
-    data = {fname: (locations, relative_locations) for fname, (locations, relative_locations) in zip(fnames, breaks)}
+    headers['fields'] = 'name: [locations, relative_locations,fiducial_break_count]'
+    data = {fname: (locations, relative_locations, fiducial_break_count) for
+            fname, (locations, relative_locations, fiducial_break_count) in zip(fnames, breaks)}
     output = [headers, data]
 
     print('Saving parameters and locations to:')
