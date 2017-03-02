@@ -155,7 +155,7 @@ def locate_breaks(image_path, p_level, filter_width, cutoff, neighborhood, fid_a
     row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
     # TODO: sort these?
     locations = row_index / (rows - 1), col_index / (cols - 1)
-    relative_locations = (locations[0] - fids[0]) / (fids[1] - fids[0])
+    relative_locations = (locations[1] - fids[0]) / (fids[1] - fids[0])
     return locations, relative_locations
 
 
