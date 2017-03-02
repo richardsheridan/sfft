@@ -106,8 +106,8 @@ class BreakGUI(MPLGUI):
                                                'rx', ms=10)[0]
 
         mask_width = self.slider_value('mask_width')
-        self.artists['mask_lines'] = [ax.axhline(mask_width, color='r'),
-                                      ax.axhline(1 - mask_width, color='r'),
+        self.artists['mask_lines'] = [ax.axhspan(0, mask_width, facecolor='r', alpha=0.3),
+                                      ax.axhspan(1 - mask_width, 1, facecolor='r', alpha=0.3),
                                       ]
 
         self.fig.canvas.draw()
