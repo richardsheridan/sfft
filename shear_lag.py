@@ -1,6 +1,7 @@
 from os import path
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
+from tkinter.messagebox import askyesno
 from tkinter.simpledialog import askfloat
 
 import numpy as np
@@ -39,17 +40,27 @@ def load_dataset(folder):
     fiber_radius = radius_dict[label]
 
     fid_strains, initial_displacement = load_strain(folder)
-    breaks = load_breaks(folder)
-    howmany = min(len(matrix_stress), len(breaks))
+    names_breaks = load_breaks(folder, 'count')
+
+    breaks = []
+    strains = []
+    for (name, count), strain in zip(names_breaks, fid_strains):
+        if 'str' in name:
+            breaks.append(count)
+            strains.append(strain)
+    break_count = np.array(breaks)
+    strains = np.array(strains)
+
+    howmany = min(len(breaks), len(matrix_stress))  # Should cut off z scans or broken dogbones
     matrix_stress = matrix_stress[:howmany]
-    fid_strains = fid_strains[:howmany]  # Should cut off z scans
-    matrix_stress /= (1 - 0.5 * fid_strains) ** 2  # Correct for Poisson's ratio???
-    break_count = np.array([len(x) for x in breaks])
-    break_count = break_count[:howmany]  # Should cut off z scans
+    strains = strains[:howmany]
+    break_count = break_count[:howmany]
+
+    matrix_stress /= (1 - 0.5 * strains) ** 2  # TODO: Correct for Poisson's ratio???
     avg_frag_len = initial_displacement / (break_count + 1)
 
-    good_strains = np.hstack(((True,), (np.diff(fid_strains) > 0)))  # strip points with clutch slip
-    return break_count[good_strains], avg_frag_len[good_strains], fid_strains[good_strains], matrix_stress[
+    good_strains = np.hstack(((True,), (np.diff(strains) > 0)))  # strip points with clutch slip
+    return break_count[good_strains], avg_frag_len[good_strains], strains[good_strains], matrix_stress[
         good_strains], fiber_radius
 
 
@@ -88,12 +99,14 @@ def interpolate(x, xp, fp):
     return np.interp(-x, -xp, fp)
 
 if __name__ == '__main__':
-    # images = get_files()
-    # FiberGUI(images)
-    # FidGUI(images)
-    # BreakGUI(images)
-    # folder = path.dirname(images[0])
     folder = choose_dataset()
+    Tk().withdraw()
+    if askyesno('Re-analyze images?', 'Re-analyze images?'):
+        images = get_files()
+        FiberGUI(images)
+        FidGUI(images)
+        BreakGUI(images)
+        folder = path.dirname(images[0])
     print(path.basename(folder))
     break_count, avg_frag_len, strains, matrix_stress, fiber_radius = load_dataset(folder)
     fiber_modulus = 80000
@@ -115,10 +128,16 @@ if __name__ == '__main__':
     print('KT IFSS: %.3g MPa' % (ifss * kt_multiplier(critical_length)))
     print('COX IFSS: %.3g MPa' % (
             ifss * cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
+    print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
+    print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
 
-    # import matplotlib.pyplot as plt
-    # fig, axs = plt.subplots(3,1,'col')
-    # for ax, data in zip(axs,(break_count,np.log(critical_length/avg_frag_len),matrix_stress,)):
-    #     ax.plot(strains,data)
-    # axs[1].plot(strains,np.zeros_like(avg_frag_len),':')
-    # plt.show(1)
+    import matplotlib.pyplot as plt
+
+    fig, axs = plt.subplots(3, 1, 'col')
+    axs[0].plot(strains, break_count)
+    axs[1].semilogy(strains, 2 * critical_length / avg_frag_len)
+    axs[2].plot(strains, matrix_stress)
+    axs[1].axhline(1, linestyle=':')
+    axs[1].axvline(strain_at_l_c, linestyle=':')
+
+    plt.show(1)

@@ -223,7 +223,7 @@ def load_fids(image_path, image=None, fid_args=()):
     except FileNotFoundError:  # else:
         left_fid, right_fid = locate_fids(image, *fid_args)
 
-    return left_fid, right_fid
+    return left_fid, right_fid, strain
 
 def load_strain(dirname):
     fid_file = path.join(dirname, FIDUCIAL_FILENAME)

@@ -43,7 +43,7 @@ def select_break_image(image, break_centroid, width=.0062371):
 
 
 def analyze_breaks(directory, stabilize_args=()):
-    names_breaks = load_breaks(directory, False)
+    names_breaks = load_breaks(directory, 'absolute')
     for name, (break_y, break_x) in names_breaks:
         print('\n' + name + '\n')
         image_path = path.join(directory, name + '.tif')

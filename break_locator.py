@@ -37,20 +37,24 @@ class BreakGUI(MPLGUI):
                              label='Frame Number', isparameter=False, forceint=True)
         self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
                              forceint=True)
-        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=0.8,
+        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=2,
                              label='Filter Width')
         self.register_slider('mask_width', self.update_mask, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
-        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=1, label='Amplitude Cutoff')
+        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
         self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
                              label='Neighborhood', forceint=True)
 
     def load_frame(self):
+        import os
         from fiber_locator import load_stab_img
         image_path = self.images[self.slider_value('frame_number')]
+        print('image:', os.path.basename(image_path))
         image = load_stab_img(image_path, self.stabilize_args)
 
         from fiducial_locator import load_fids
-        self.fids = load_fids(image_path, image, *self.fid_args)
+        left, right, self.strain = load_fids(image_path, image, *self.fid_args)
+        print('Strain: {:0.3g} %'.format(self.strain * 100))
+        self.fids = left, right
 
         self.image = image
         self.pyramid = make_pyramid(image, 7)
@@ -106,8 +110,8 @@ class BreakGUI(MPLGUI):
                                                'rx', ms=10)[0]
 
         mask_width = self.slider_value('mask_width')
-        self.artists['mask_lines'] = [ax.axhspan(0, mask_width, facecolor='r', alpha=0.3),
-                                      ax.axhspan(1 - mask_width, 1, facecolor='r', alpha=0.3),
+        self.artists['mask_lines'] = [ax.axhspan(0.001, mask_width, facecolor='r', alpha=0.3),
+                                      ax.axhspan(.999 - mask_width, 1, facecolor='r', alpha=0.3),
                                       ]
 
         self.fig.canvas.draw()
@@ -152,7 +156,7 @@ class BreakGUI(MPLGUI):
 
 
 def mask_stray_peaks(row_index, col_index, mask_width, rows):
-    min_row = int(rows * mask_width)
+    min_row = rows * mask_width
     max_row = rows - 1 - min_row
     keep = (min_row <= row_index) & (row_index <= max_row)
     return row_index[keep], col_index[keep]
@@ -201,12 +205,21 @@ def save_breaks(parameters, breaks, images):
         dump(output, file)
 
 
-def load_breaks(directory, fid_relative=True):
+def load_breaks(directory, output=None):
     breakfile = path.join(directory, BREAK_FILENAME)
     with open(breakfile) as fp:
         header, data = json.load(fp)
 
-    return [(name, data[name][fid_relative]) for name in sorted(data)]
+    if output is None:
+        return header, data
+    elif output is 'absolute':
+        return [(name, data[name][0]) for name in sorted(data)]
+    elif output is 'relative':
+        return [(name, data[name][1]) for name in sorted(data)]
+    elif output == 'count':
+        return [(name, data[name][2]) for name in sorted(data)]
+    else:
+        raise ValueError('Unknown output option: ()'.format(output))
 
 
 if __name__ == '__main__':

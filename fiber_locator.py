@@ -98,6 +98,7 @@ class FiberGUI(MPLGUI):
         self.display_image_array = image  # .astype('uint8')
         # image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
         self.axes['image'].imshow(image, cmap='gray', aspect='auto')
+        # TODO: draw line using matplotlib overlay
         self.fig.canvas.draw()
 
     def set_display_type(self, label):
