@@ -232,7 +232,7 @@ def normalize_straindatpath(straindatpath):
     return straindatpath
 
 
-def parse_strain_dat(straindatpath, max_cycle=None, stress_type='max'):
+def parse_strain_dat(straindatpath, max_cycle=None, stress_type='after_tdi'):
     straindatpath = normalize_straindatpath(straindatpath)
 
     label, tdi_length, width, thickness, fid_estimate = parse_strain_headers(straindatpath)
@@ -282,18 +282,20 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
         maxima = np.array(threshold, bool)
 
     # Technically this could replace all the following logic, but it is slower because it works on each pixel
-    # from cvutil import max_filter
-    # maxima &= (image ==  max_filter(image, neighborhood))
+    # import cvutil
+    # maxima &= (image ==  cvutil.max_filter(image, neighborhood))
     # if border:
     #     maxima[:border] = False
     #     maxima[-border:] = False
     #     maxima.T[:border] = False
     #     maxima.T[-border:] = False
-    # return np.where(maxima)
+    # return np.transpose(cvutil.argwhere(maxima))
 
     rows, cols = image.shape
     max_indices = set()
-    for candidate in zip(*np.where(maxima)):  # This call to np.where is the bottleneck for large images
+    all_candidates = zip(*np.where(maxima))
+    # all_candidates = cvutil.argwhere(maxima)
+    for candidate in all_candidates:  # This call to np.where is the bottleneck for large images
         # If we have eliminated a candidate in a previous iteration, we can skip ahead
         if not maxima[candidate]:
             continue
