@@ -1,8 +1,11 @@
-import numpy as np
-from pytest import raises, approx
-from hypothesis import given, settings, reject, HealthCheck, assume, example
 import hypothesis.strategies as st
+import numpy as np
+from hypothesis import given, settings, assume
 from hypothesis.extra.numpy import arrays
+from pytest import approx
+
+
+# MY STRATEGIES
 
 
 def rnd_len_arrays(dtype, min_len=0, max_len=3, elements=None):
@@ -17,11 +20,41 @@ def rnd_shape_images(dtype, min_len=0, max_len=3, elements=None):
     return shapes.flatmap(lambda n: arrays(dtype, n, elements=elements))
 
 
+@st.composite
+def image_with_peak(draw, min_size=3, max_size=60, max_curvature=1e3, max_eccentricity=1e3):
+    rows = draw(st.integers(min_value=min_size, max_value=max_size))
+    cols = draw(st.integers(min_value=min_size, max_value=max_size))
+    peak_y = draw(st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+    peak_x = draw(st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
+    eccentricity = draw(
+        st.floats(min_value=1 / max_eccentricity, max_value=max_eccentricity, allow_nan=False, allow_infinity=False))
+    curvature = draw(
+        st.floats(min_value=1 / max_curvature, max_value=max_curvature, allow_nan=False, allow_infinity=False))
+
+    # TODO: introduce a direction for the eccentricity
+    # theta = np.pi/2*draw(unit_interval_floats())
+    # sin = np.sin(theta)
+    # cos = np.cos(theta)
+    # z=(((x-x0)/a)**2+((y-y0)/b)**2)+c
+
+    center = (np.array([rows, cols]) - 1) / 2
+    peak_position = center * (1 + np.array([peak_y, peak_x]))
+    j = np.linspace(-1, 1, rows) - peak_y
+    i = np.linspace(-1, 1, cols) - peak_x
+    ii, jj = np.meshgrid((curvature * i) ** 2, (curvature * eccentricity * j) ** 2)
+    image = ii + jj
+
+    return image, peak_position
+
+
 def unit_interval_floats(allow_nan=False):
     return st.floats(min_value=0, max_value=1, allow_nan=allow_nan, allow_infinity=False)
 
 
-from util import wavelet_filter, STABILIZE_PREFIX
+### TESTS START HERE
+
+
+from util import wavelet_filter, STABILIZE_PREFIX, quadratic_subpixel_extremum_1d
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
@@ -116,25 +149,38 @@ def test_quadratic_subpixel_extremum(image, a, b):
     r, c = image.shape
     r = int((r - 2) * a) + 1
     c = int((c - 2) * b) + 1
-    output=quadratic_subpixel_extremum_2d(image, (r, c))
-    assert np.linalg.norm(output-np.array([r,c]),np.inf) < 1
+    output = quadratic_subpixel_extremum_2d(image, (r, c))
+    assert np.linalg.norm(output - np.array([r, c]), np.inf) < 1
 
 
-@given(st.integers(min_value=3, max_value=60),
-       st.integers(min_value=3, max_value=60),
-       st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False),
-       st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False),
-       st.floats(min_value=1e-3, max_value=1e2, allow_nan=False, allow_infinity=False),
-       st.floats(min_value=1e-3, max_value=1e2, allow_nan=False, allow_infinity=False))
-def test_qse_centroid_recovery(r, c, a, b, f, g):
-    center = (np.array([r, c]) - 1) / 2
-    position = center * (1 + np.array([a, b]))
-    j = np.linspace(-1, 1, r) - a
-    i = np.linspace(-1, 1, c) - b
-    ii, jj = np.meshgrid(f * i, g * j)
-    image = ii ** 2 + jj ** 2
+@given(image_with_peak())
+def test_qse_centroid_recovery(img_pos):
+    image, position = img_pos
+    r, c = image.shape
     min_pixel_loc = min_r, min_c = np.unravel_index(np.argmin(image), (r, c))
     assume(0 < min_r < r - 1)
     assume(0 < min_c < c - 1)
 
     assert np.all(np.isclose(quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6))
+
+
+@given(st.one_of(rnd_len_arrays('f8', min_len=3, max_len=10),
+                 rnd_len_arrays('f4', min_len=3, max_len=10)),
+       unit_interval_floats())
+def test_qse_1d(array, index):
+    index = int((len(array) - 2) * index) + 1
+    output = quadratic_subpixel_extremum_1d(array, index)
+    assert abs(output - index) < 1
+
+
+@given(st.integers(min_value=10, max_value=1000),
+       unit_interval_floats(),
+       st.floats(min_value=1e-3, max_value=1e3))
+def test_qse_1d_centroid_recovery(a, b, c):
+    center = (a - 1) / 2
+    peak_pos = center * 2 * b
+    array = c * (np.linspace(-1, 1, a) - peak_pos)
+    array *= array
+    index = np.argmax(array)
+    output = quadratic_subpixel_extremum_1d(array, index)
+    assert approx(peak_pos, output)
