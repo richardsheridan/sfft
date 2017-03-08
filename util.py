@@ -10,8 +10,6 @@ STABILIZE_PREFIX = 'stab_'
 VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
 VALID_ZERO_CROSSING_DIRECTIONS = frozenset(('upward', 'downward', 'all'))
 
-DISPLAY_SIZE = (1200, 450)
-
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
 
@@ -190,6 +188,9 @@ def basename_without_stab(image_path):
     return image_path
 
 
+def grab_first_number(string):
+    return float(string.split()[0])
+
 def parse_strain_headers(straindatpath):
     straindatpath = normalize_straindatpath(straindatpath)
     with open(straindatpath) as f:
@@ -199,13 +200,13 @@ def parse_strain_headers(straindatpath):
             if i == 2:
                 label = line
             elif i == 8:
-                tdi_length = float(line.split()[0])
+                tdi_length = grab_first_number(line)
             elif i == 13:
-                width = float(line.split()[0])
+                width = grab_first_number(line)
             elif i == 14:
-                thickness = float(line.split()[0])
+                thickness = grab_first_number(line)
             elif i == 16:
-                fid_estimate = float(line.split()[0])
+                fid_estimate = grab_first_number(line)
                 break
     return label, tdi_length, width, thickness, fid_estimate
 
@@ -273,6 +274,10 @@ def parse_strain_dat(straindatpath, max_cycle=None, stress_type='after_tdi'):
     raise ValueError('Could not interpret stress type: ' + str(stress_type))
 
 
+def image_argmax(array):
+    return np.unravel_index(np.argmax(array), array.shape)
+
+
 def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, subpixel=1):
     if threshold is None:
         maxima = np.ones_like(image, bool)
@@ -293,9 +298,9 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
 
     rows, cols = image.shape
     max_indices = set()
-    all_candidates = zip(*np.where(maxima))
+    all_candidates = zip(*np.where(maxima))  # This call to np.where is the bottleneck for large images
     # all_candidates = cvutil.argwhere(maxima)
-    for candidate in all_candidates:  # This call to np.where is the bottleneck for large images
+    for candidate in all_candidates:
         # If we have eliminated a candidate in a previous iteration, we can skip ahead
         if not maxima[candidate]:
             continue
@@ -309,8 +314,7 @@ def peak_local_max(image: np.ndarray, threshold=None, neighborhood=1, border=1, 
             maxima[r0:r1, c0:c1] = False
 
             # Locate the actual maximum of the neighborhood
-            neighborhood_array = image[r0:r1, c0:c1]
-            max_index = rm, cm = np.unravel_index(np.argmax(neighborhood_array), neighborhood_array.shape)
+            max_index = rm, cm = image_argmax(image[r0:r1, c0:c1])
 
             # Shift max_index to image coordinates
             max_index = rm, cm = rm + r0, cm + c0

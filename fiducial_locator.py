@@ -4,7 +4,7 @@ import numpy as np
 
 from cvutil import make_pyramid
 from gui import MPLGUI
-from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, DISPLAY_SIZE, batch, \
+from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, batch, \
     gaussian, convolve, quadratic_subpixel_extremum_1d
 
 FIDUCIAL_FILENAME = 'fiducials.json'
@@ -24,7 +24,7 @@ class FidGUI(MPLGUI):
         self.register_axis('profile',[.1,.3,.8,.3])
         self.artists['profile'] = self.axes['profile'].plot(0)[0]
         self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'r.', ms=10)[0]
+        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [100] * 2, 'r.', ms=10)[0]
 
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
