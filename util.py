@@ -9,6 +9,7 @@ from numbers import Integral as Int, Number
 STABILIZE_PREFIX = 'stab_'
 VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
 VALID_ZERO_CROSSING_DIRECTIONS = frozenset(('upward', 'downward', 'all'))
+PARALLEL_BATCH_PROCESSING = False
 
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
@@ -36,22 +37,24 @@ def dump(obj, fp):
     fp.writelines(_default_encoder.iterencode(obj))
 
 
-def batch(function, image_paths, *args):
+def batch(function, image_paths, *args, parallel=PARALLEL_BATCH_PROCESSING):
     """
     Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
     :param function:
     :param image_paths:
     :param args:
+    :param parallel:
     :return:
     """
     from itertools import starmap, repeat
     args = repeat(args)
     args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
 
-    # from multiprocessing import pool, freeze_support
-    # freeze_support()
-    # p = pool.Pool()
-    # starmap = p.starmap
+    if parallel:
+        from multiprocessing import pool, freeze_support
+        freeze_support()
+        p = pool.Pool()  # TODO: one long-lived pool would be better
+        starmap = p.starmap
 
     return list(starmap(function, args))
 
