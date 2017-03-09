@@ -1,25 +1,28 @@
 name: sfft
 channels: !!python/tuple
-- https://conda.anaconda.org/menpo
 - defaults
+- https://conda.anaconda.org/conda-forge
+- https://conda.anaconda.org/menpo
 dependencies:
+- colorama=0.3.7=py35_0
 - cycler=0.10.0=py35_0
 - icu=57.1=vc14_0
-- jpeg=8d=vc14_2
-- libpng=1.6.22=vc14_0
-- matplotlib=1.5.3=np111py35_0
+- jpeg=9b=vc14_0
+- libpng=1.6.27=vc14_0
+- matplotlib=2.0.0=np112py35_0
 - menpo::opencv3=3.1.0=py35_0
-- mkl=11.3.3=1
-- numpy=1.11.2=py35_0
-- openssl=1.0.2j=vc14_0
-- pip=8.1.2=py35_0
+- mkl=2017.0.1=0
+- numpy=1.12.0=py35_0
+- openssl=1.0.2k=vc14_0
+- pip=9.0.1=py35_1
+- py=1.4.32=py35_0
 - pyparsing=2.1.4=py35_0
-- pyqt=5.6.0=py35_0
-- python=3.5.2=0
-- python-dateutil=2.5.3=py35_0
-- pytz=2016.7=py35_0
-- qt=5.6.0=vc14_0
-- scipy=0.18.1=np111py35_0
+- pyqt=5.6.0=py35_2
+- pytest=3.0.6=py35_0
+- python=3.5.3=0
+- python-dateutil=2.6.0=py35_0
+- pytz=2016.10=py35_0
+- qt=5.6.2=vc14_3
 - setuptools=27.2.0=py35_1
 - sip=4.18=py35_0
 - six=1.10.0=py35_0
@@ -27,4 +30,6 @@ dependencies:
 - vs2015_runtime=14.0.25123=0
 - wheel=0.29.0=py35_0
 - zlib=1.2.8=vc14_3
-prefix: C:\Users\rjs3\AppData\Local\Continuum\Anaconda3\envs\sfft
+- pip:
+  - hypothesis==3.6.1
+

@@ -3,7 +3,7 @@ from tkinter import Tk
 from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
 import numpy as np
 # from numpy import convolve
-from scipy.signal import fftconvolve as convolve, ricker, gaussian
+from vendored_scipy import fftconvolve as convolve, ricker, gaussian
 from numbers import Integral as Int, Number
 
 STABILIZE_PREFIX = 'stab_'
