@@ -117,14 +117,6 @@ def put_file():
         return
 
 
-def cwt(data, wavelet, widths):
-    output = np.zeros([len(widths), len(data)])
-    for ind, width in enumerate(widths):
-        wavelet_data = wavelet(min(width, len(data)), width / 9)
-        output[ind, :] = convolve(data, wavelet_data, mode='same')
-    return output
-
-
 def wavelet_filter(series, sigma, bandwidth=None):
     window_size = int(sigma * 9)
     if window_size <= 3:
