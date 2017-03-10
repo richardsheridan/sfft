@@ -130,14 +130,22 @@ if __name__ == '__main__':
             ifss * cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
     print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
     print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
+    print('Breaks: %d' % break_count[-1])
 
     import matplotlib.pyplot as plt
 
     fig, axs = plt.subplots(3, 1, 'col')
-    axs[0].plot(strains, break_count)
-    axs[1].semilogy(strains, 2 * critical_length / avg_frag_len)
-    axs[2].plot(strains, matrix_stress)
-    axs[1].axhline(1, linestyle=':')
-    axs[1].axvline(strain_at_l_c, linestyle=':')
+    axs[0].plot(strains*100, break_count)
+    axs[0].set_ylabel('Num. Breaks')
+    axs[1].plot(strains*100, avg_frag_len)
+    axs[1].axis(ymax=max(1000,critical_length*2.25),ymin=0)
+    axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
+    axs[2].plot(strains*100, matrix_stress)
+    axs[2].set_ylabel('Matrix Stress (MPa)')
+    axs[2].set_xlabel('Matrix strain (%)')
+    axs[1].axhline((2 * critical_length), linestyle=':')
+    axs[0].axvline(strain_at_l_c*100, linestyle=':')
+    axs[1].axvline(strain_at_l_c*100, linestyle=':')
+    axs[2].axvline(strain_at_l_c*100, linestyle=':')
 
     plt.show(1)
