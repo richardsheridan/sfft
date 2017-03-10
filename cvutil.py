@@ -195,6 +195,7 @@ def fit_line_fitline(processed_image_array):
     :return slope, intercept, theta:
     """
     points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
+    # points = cv2.findNonZero(processed_image_array) # TODO: is this equivalent?
     line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
     centroid = line[2:]
     theta = np.arctan2(line[1], line[0])
