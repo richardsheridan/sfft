@@ -143,6 +143,32 @@ def wavelet_filter(series, sigma, bandwidth=None):
 
 
 def find_zero_crossings(smooth_series, direction='downward'):
+    """
+
+    Parameters
+    ----------
+    smooth_series
+    direction
+
+    Returns
+    -------
+    np.ndarray
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x = np.linspace(-2,2,10)
+    >>> y = x**2-1
+    >>> y
+    array([ 3.        ,  1.41975309,  0.2345679 , -0.55555556, -0.95061728,
+           -0.95061728, -0.55555556,  0.2345679 ,  1.41975309,  3.        ])
+    >>> find_zero_crossings(y)
+    array([False, False,  True, False, False, False, False, False, False, False], dtype=bool)
+    >>> find_zero_crossings(y,'upward')
+    array([False, False, False, False, False, False,  True, False, False, False], dtype=bool)
+    >>> find_zero_crossings(y, 'all')
+    array([False, False,  True, False, False, False,  True, False, False, False], dtype=bool)
+    """
     series_shifted_left = np.roll(smooth_series, shift=-1, axis=-1)
     if direction not in VALID_ZERO_CROSSING_DIRECTIONS:
         raise ValueError('Invalid choice of direction:', direction)
@@ -375,6 +401,23 @@ def quadratic_subpixel_extremum_2d(image, max_index):
 
 def quadratic_subpixel_extremum_1d(profile, max_index):
     # optimization: grab the image pixel values as python floats in local variables
+    """
+
+    Parameters
+    ----------
+    profile
+    max_index
+
+    Returns
+    -------
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> profile = np.array([ 53.16374747,  53.20836579,  52.61800576])
+    >>> quadratic_subpixel_extremum_1d(profile,1)
+    0.570267466599464
+    """
     profile_item = profile.item
     try:
         bm = profile_item(max_index - 1)
@@ -385,8 +428,8 @@ def quadratic_subpixel_extremum_1d(profile, max_index):
 
     # estimate the coefficients of D(x)=Axx+Bx+C by finite difference
     # the coordinate system origin is implicitly shifted to x from max_index
-    A = (bm + bp) / 2 - b0
-    B = (bm - bp) / 2
+    A = (bp + bm) / 2 - b0
+    B = (bp - bm) / 2
     # C = b0
 
     # Solve the system Gx(x) = 0 for the quadratic extremum

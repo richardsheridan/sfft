@@ -161,7 +161,7 @@ def test_qse_centroid_recovery(img_pos):
     assume(0 < min_r < r - 1)
     assume(0 < min_c < c - 1)
 
-    assert np.all(np.isclose(quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6))
+    assert np.allclose(quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6)
 
 
 @given(st.one_of(rnd_len_arrays('f8', min_len=3, max_len=10),
@@ -173,14 +173,13 @@ def test_qse_1d(array, index):
     assert abs(output - index) < 1
 
 
-@given(st.integers(min_value=10, max_value=1000),
+@given(st.integers(min_value=5, max_value=100),
        unit_interval_floats(),
-       st.floats(min_value=1e-3, max_value=1e3))
+       st.floats(min_value=1e-5, max_value=1e5))
 def test_qse_1d_centroid_recovery(a, b, c):
-    center = (a - 1) / 2
-    peak_pos = center * 2 * b
-    array = c * (np.linspace(-1, 1, a) - peak_pos)
+    array_center = (a - 1) / 2
+    peak_shift = (b - .5)
+    array = c * (np.linspace(-1, 1, a) - peak_shift)
     array *= array
-    index = np.argmax(array)
-    output = quadratic_subpixel_extremum_1d(array, index)
-    assert approx(peak_pos, output)
+    index = np.argmin(array)
+    assert approx((peak_shift + 1) * array_center) == quadratic_subpixel_extremum_1d(array, index)

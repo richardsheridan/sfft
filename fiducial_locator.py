@@ -78,12 +78,17 @@ class FidGUI(MPLGUI):
             self.artists[name] = ax.axvline(loc * c, color='r')
 
         l = len(self.filtered_profile)
-        locations = self.locations * l
+        locations = self.locations * (l - 1)
         self.artists['profile'].set_xdata(np.arange(l))
         self.artists['profile'].set_ydata(self.filtered_profile)
+
         self.artists['profile_fids'].set_xdata(locations)
-        no_nan = not np.any(np.isnan(locations))
-        self.artists['profile_fids'].set_ydata(self.filtered_profile[np.int64(locations) if no_nan else [0, 0]])
+        if not np.any(np.isnan(locations)):
+            value_at_locations = np.interp(locations, np.arange(l), self.filtered_profile)
+        else:
+            value_at_locations = [0, 0]
+        self.artists['profile_fids'].set_ydata(value_at_locations)
+
         self.artists['cutoff'].set_xdata([0, len(self.profile)])
         self.artists['cutoff'].set_ydata([self.slider_value('cutoff')] * 2)
 
@@ -132,7 +137,28 @@ def fid_profile_from_image(image):
 
 
 def choose_fids(filtered_profile, fid_amp, mask_until):
-    l = len(filtered_profile)-1
+    """
+
+    Parameters
+    ----------
+    filtered_profile
+    fid_amp
+    mask_until
+
+    Returns
+    -------
+    np.ndarray
+
+    Examples
+    -------
+    >>> import numpy as np
+    >>> x=np.sin(np.linspace(0,3*2*np.pi,100))
+    >>> choose_fids(x,.1,1)
+    (0.083304472645591932, 0.74997113931225867)
+
+    The exact solution is (1/12, 3/4)
+    """
+    l = len(filtered_profile) - 1
     # only start looking after heuristic starting point
     # mask_until = int(.06 * l)
 
@@ -141,7 +167,7 @@ def choose_fids(filtered_profile, fid_amp, mask_until):
 
     fid_peaks = find_zero_crossings(np.gradient(filtered_profile)) & (filtered_profile >= fid_amp) & end_mask
 
-    fid_ind = np.where(fid_peaks)[0]
+    fid_ind = np.where(fid_peaks)[0] + 1
 
     try:
         left_fid = fid_ind[0]
@@ -166,8 +192,15 @@ def find_grips(profile, threshold = 2):
     Presume that the grips appear as peaks in the filtered slope of the profile i.e. curvature == 0
     left grip is the first one and right grip is the last one
     eliminate false positives with a threshold on the steepness (slope)
-    :param profile:
-    :return:
+
+    Parameters
+    ----------
+    profile
+    threshold
+
+    Returns
+    -------
+    left_grip, right_grip
     """
     l = len(profile)
     kernel = np.gradient(gaussian(l // 50, l / 500).astype(np.float32))
