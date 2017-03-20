@@ -38,7 +38,7 @@ class MPLGUI:
     def create_layout(self):
         raise NotImplementedError
 
-    def load_frame(self):
+    def select_frame(self):
         raise NotImplementedError
 
     def recalculate_vision(self):
@@ -65,7 +65,7 @@ class MPLGUI:
         self.timestamp = perf_counter()
 
         self.create_layout()
-        self.load_frame()
+        self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 

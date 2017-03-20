@@ -44,7 +44,7 @@ class BreakGUI(MPLGUI):
         self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
                              label='Neighborhood', forceint=True)
 
-    def load_frame(self):
+    def select_frame(self):
         import os
         from fiber_locator import load_stab_img
         image_path = self.images[self.slider_value('frame_number')]
@@ -126,7 +126,7 @@ class BreakGUI(MPLGUI):
             save_breaks(parameters, breaks, self.images)
 
     def update_frame_number(self, val):
-        self.load_frame()
+        self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 

@@ -38,7 +38,7 @@ class FidGUI(MPLGUI):
                              label='Filter Width')
         self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=60, valinit=30, label='Amplitude Cutoff')
 
-    def load_frame(self):
+    def select_frame(self):
         image_path = self.images[self.slider_value('frame_number')]
         from fiber_locator import load_stab_img
         self.image = image = load_stab_img(image_path, *self.stabilize_args)
@@ -108,7 +108,7 @@ class FidGUI(MPLGUI):
             save_fids(parameters, self.images, left_fid, right_fid)
 
     def update_frame_number(self, val):
-        self.load_frame()
+        self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 

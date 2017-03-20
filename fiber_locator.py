@@ -10,11 +10,11 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(MPLGUI):
-    def __init__(self, images):
-        self.images = images
+    def __init__(self, image_paths):
+        self.image_paths = image_paths
         self.display_type = 'original'
         self.executor = ThreadPoolExecutor()
-        self.future_images = [self.executor.submit(imread, image) for image in images]
+        self.future_images = [self.executor.submit(imread, image) for image in image_paths]
 
         super().__init__()
 
@@ -29,7 +29,8 @@ class FiberGUI(MPLGUI):
         #                      labels=('sobel', 'laplace'))
 
         self.slider_coords = [.3, .2, .55, .03]
-        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
+                             valinit=0,
                              label='Frame number', isparameter=False, forceint=True)
         self.register_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
                              label='edge threshold')
@@ -48,8 +49,7 @@ class FiberGUI(MPLGUI):
         #                      max=5,
         #                      init=0, )
 
-
-    def load_frame(self):
+    def select_frame(self):
         # image_path = self.images[self.slider_value('frame_number')]
         # image = imread(image_path)
         image = self.future_images[self.slider_value('frame_number')].result()
@@ -129,12 +129,12 @@ class FiberGUI(MPLGUI):
         threshold, p_level = self.parameters.values()
         return_image = False
         save_image = True
-        images = self.images
+        images = self.image_paths
         x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
         save_stab(images, x, threshold, p_level)
 
     def update_frame_number(self, val):
-        self.load_frame()
+        self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
