@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import inspect
 from time import perf_counter
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 from numbers import Integral as Int
 
@@ -35,6 +36,10 @@ class MPLGUI:
     fig = NotImplementedAttribute()
     slider_coords = NotImplementedAttribute()
 
+    @staticmethod
+    def load_image_to_pyramid(image_path):
+        raise NotImplementedError
+
     def create_layout(self):
         raise NotImplementedError
 
@@ -55,7 +60,6 @@ class MPLGUI:
         self._parameter_sliders.append(name)
 
     def __init__(self,block=True):
-        import matplotlib.pyplot as plt
 
         self.axes = {}
         self.artists = {}
@@ -64,17 +68,26 @@ class MPLGUI:
         self._parameter_sliders = []
         self.timestamp = perf_counter()
 
+        # NOTE: as of 3/20/17, TPE and PPE are the same speed for normal workloads, so use safer PPE
+        e = ProcessPoolExecutor()
+        self.future_pyramids = [e.submit(self.load_image_to_pyramid, image_path) for image_path in self.image_paths]
+        e.shutdown(False)
+
         self.create_layout()
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
+        import matplotlib.pyplot as plt
         if block:
             plt.ioff()
         else:
             plt.ion()
 
         plt.show()
+
+    def get_pyramid(self, frame_number):
+        return self.future_pyramids[frame_number].result()
 
     def create_figure(self, size=(8,10)):
         import matplotlib.pyplot as plt

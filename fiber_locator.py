@@ -5,16 +5,12 @@ from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_
 from gui import MPLGUI
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-
 STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(MPLGUI):
     def __init__(self, image_paths):
         self.image_paths = image_paths
         self.display_type = 'original'
-        self.executor = ThreadPoolExecutor()
-        self.future_images = [self.executor.submit(imread, image) for image in image_paths]
 
         super().__init__()
 
@@ -49,12 +45,16 @@ class FiberGUI(MPLGUI):
         #                      max=5,
         #                      init=0, )
 
-    def select_frame(self):
-        # image_path = self.images[self.slider_value('frame_number')]
-        # image = imread(image_path)
-        image = self.future_images[self.slider_value('frame_number')].result()
+    @staticmethod
+    def load_image_to_pyramid(image_path):
+        image = imread(image_path)
         image = correct_tdi_aspect(image)
-        self.pyramid = make_pyramid(image)
+        pyramid = make_pyramid(image)
+        print('loading: ' + image_path, flush=True)
+        return pyramid
+
+    def select_frame(self):
+        self.pyramid = self.get_pyramid(self.slider_value('frame_number'))
 
     def recalculate_vision(self):
         self.recalculate_edges()
