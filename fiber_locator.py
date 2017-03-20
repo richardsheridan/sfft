@@ -83,8 +83,8 @@ class FiberGUI(MPLGUI):
         self.axes['image'].clear()
         label = self.display_type
         if label == 'original':
-            image = self.tdi_array.copy()
             image = draw_line(image, self.slope, self.intercept, 0)
+            image = self.tdi_array
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
@@ -95,7 +95,7 @@ class FiberGUI(MPLGUI):
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
             image = draw_line(image, self.slope, self.intercept, 255)
         elif label == 'rotated':
-            image = self.tdi_array.copy()
+            image = self.tdi_array
             image = rotate_fiber(image, self.vshift, self.theta)
         else:
             print('unknown display type:', label)
@@ -182,7 +182,7 @@ def stabilize_file(image_path, threshold, p_level, return_image=False, save_imag
     intercept = intercept / edgeimage.shape[0] * image.shape[0]
     vshift = vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
-        image = rotate_fiber(image, vshift, theta)
+        image = rotate_fiber(image, vshift, theta, overwrite=True)
     if save_image:
         savename = STABILIZE_PREFIX + path.splitext(fname)[0] + '.jpg'
         print('Saving: ' + savename)

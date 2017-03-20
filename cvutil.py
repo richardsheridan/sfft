@@ -129,7 +129,8 @@ def max_filter(image, neighborhood=1, elliptical=True):
     return cv2.dilate(image, footprint, borderType=cv2.BORDER_REPLICATE)
 
 
-def draw_line(image_array, slope, intercept, color=255, thickness=2):
+def draw_line(image_array, slope, intercept, color=255, thickness=2, overwrite=False):
+    image_array = np.array(image_array, copy=not overwrite)
     x_size = image_array.shape[1]
     max_chunk = 2 ** 14
     chunks = x_size // max_chunk
@@ -224,7 +225,8 @@ def fit_line_moments(processed_image_array):
     return slope, intercept, theta
 
 
-def rotate_fiber(image, vshift, theta):
+def rotate_fiber(image, vshift, theta, overwrite=False):
+    image = np.array(image, copy=not overwrite)
     y_size, x_size = image.shape
     mean = int(image.mean())
     translation = np.float32([[1, 0, 0], [0, 1, vshift]])
