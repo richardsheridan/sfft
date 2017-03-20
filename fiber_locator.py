@@ -53,7 +53,7 @@ class FiberGUI(MPLGUI):
         # image_path = self.images[self.slider_value('frame_number')]
         # image = imread(image_path)
         image = self.future_images[self.slider_value('frame_number')].result()
-        self.tdi_array = image = correct_tdi_aspect(image)
+        image = correct_tdi_aspect(image)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
@@ -76,14 +76,12 @@ class FiberGUI(MPLGUI):
 
         self.vshift = vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
 
-        self.intercept = self.intercept / self.edges.shape[0] * self.tdi_array.shape[0]
-        self.vshift = self.vshift / self.edges.shape[0] * self.tdi_array.shape[0]
-
     def refresh_plot(self):
         self.axes['image'].clear()
         label = self.display_type
         if label == 'original':
-            image = self.tdi_array
+            p_level = self.slider_value('p_level')
+            image = self.pyramid[p_level]
             image = draw_line(image, self.slope, self.intercept*image.shape[0], 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
@@ -95,7 +93,8 @@ class FiberGUI(MPLGUI):
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
             image = draw_line(image, self.slope, self.intercept*image.shape[0], 255)
         elif label == 'rotated':
-            image = self.tdi_array
+            p_level = self.slider_value('p_level')
+            image = self.pyramid[p_level]
             image = rotate_fiber(image, self.vshift, self.theta)
         else:
             print('unknown display type:', label)
@@ -179,7 +178,6 @@ def stabilize_file(image_path, threshold, p_level, return_image=False, save_imag
     edgeimage = sobel_filter(pyramid[p_level], 0, 1)
     edgeimage = binary_threshold(edgeimage, threshold)
     slope, intercept, theta = fit_line_moments(edgeimage)
-    intercept = intercept / edgeimage.shape[0] * image.shape[0]
     vshift = vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta, overwrite=True)
