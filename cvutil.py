@@ -171,8 +171,7 @@ def imread(filename):
     return cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
 
-def load_tdi_and_correct_aspect(image_path):
-    tdi_array = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+def correct_tdi_aspect(tdi_array):
 
     y, x = tdi_array.shape
     y = int(y * PIXEL_SIZE_Y / PIXEL_SIZE_X)  # shrink y to match x pixel size

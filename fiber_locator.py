@@ -1,9 +1,11 @@
 from os import path
 
-from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, load_tdi_and_correct_aspect, fit_line_moments, \
+from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_tdi_aspect, fit_line_moments, \
     rotate_fiber, imwrite, imread, binary_threshold
 from gui import MPLGUI
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
+
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 STABILIZE_FILENAME = 'stabilize.json'
 
@@ -11,6 +13,8 @@ class FiberGUI(MPLGUI):
     def __init__(self, images):
         self.images = images
         self.display_type = 'original'
+        self.executor = ThreadPoolExecutor()
+        self.future_images = [self.executor.submit(imread, image) for image in images]
 
         super().__init__()
 
@@ -46,8 +50,10 @@ class FiberGUI(MPLGUI):
 
 
     def load_frame(self):
-        image_path = self.images[self.slider_value('frame_number')]
-        self.tdi_array = image = load_tdi_and_correct_aspect(image_path)
+        # image_path = self.images[self.slider_value('frame_number')]
+        # image = imread(image_path)
+        image = self.future_images[self.slider_value('frame_number')].result()
+        self.tdi_array = image = correct_tdi_aspect(image)
         self.pyramid = make_pyramid(image)
 
     def recalculate_vision(self):
@@ -161,14 +167,14 @@ def load_stab_img(image_path, *stabilize_args):
         image = stabilize_file(image_path, *stabilize_args, return_image=True)
     else:
         #TODO: do we really want to silently fall back to opening the unstabilized TDI
-        image = load_tdi_and_correct_aspect(image_path)
+        image = correct_tdi_aspect(imread(image_path))
     return image
 
 
 def stabilize_file(image_path, threshold, p_level, return_image=False, save_image=False):
     dir, fname = path.split(image_path)
     print('Loading:', fname)
-    image = load_tdi_and_correct_aspect(image_path)
+    image = correct_tdi_aspect(imread(image_path))
     pyramid = make_pyramid(image, p_level)
     edgeimage = sobel_filter(pyramid[p_level], 0, 1)
     edgeimage = binary_threshold(edgeimage, threshold)
