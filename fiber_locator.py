@@ -83,17 +83,17 @@ class FiberGUI(MPLGUI):
         self.axes['image'].clear()
         label = self.display_type
         if label == 'original':
-            image = draw_line(image, self.slope, self.intercept, 0)
             image = self.tdi_array
+            image = draw_line(image, self.slope, self.intercept*image.shape[0], 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
 
-            image = draw_line(image, self.slope, self.intercept, float(image.max()))
+            image = draw_line(image, self.slope, self.intercept*image.shape[0], float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-            image = draw_line(image, self.slope, self.intercept, 255)
+            image = draw_line(image, self.slope, self.intercept*image.shape[0], 255)
         elif label == 'rotated':
             image = self.tdi_array
             image = rotate_fiber(image, self.vshift, self.theta)

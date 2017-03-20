@@ -445,12 +445,27 @@ def quadratic_subpixel_extremum_1d(profile, max_index):
 
 
 def vshift_from_si_shape(slope, intercept, shape):
-    x_middle = shape[1] // 2
-    y_middle = x_middle * slope + intercept
-    return shape[0] // 2 - y_middle
+    """
+    Calculate a vertical shift factor to place a line in the middle of an image
+
+    Parameters
+    ----------
+    slope: float
+    intercept: float between 0 and 1 (relative intercept)
+    shape: Tuple[int,int]
+
+    Returns
+    -------
+    vshift: float
+    """
+    r, c = shape
+    x, y = c-1, r-1
+    x_middle = x // 2
+    y_middle = x_middle * slope + intercept * y
+    return y // 2 - y_middle
 
 
-def si_from_ct(centroid, theta):
+def si_from_ct(centroid, theta, shape):
     slope = np.tan(theta)
     intercept = centroid[1] - slope * centroid[0]
-    return slope, intercept
+    return slope, intercept/(shape[0]-1)

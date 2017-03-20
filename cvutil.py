@@ -199,7 +199,7 @@ def fit_line_fitline(processed_image_array):
     line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
     centroid = line[2:]
     theta = np.arctan2(line[1], line[0])
-    slope, intercept = si_from_ct(centroid, theta)
+    slope, intercept = si_from_ct(centroid, theta,processed_image_array.shape)
     return slope, intercept, theta
 
 
@@ -221,7 +221,7 @@ def fit_line_moments(processed_image_array):
     centroid = np.array((moments['m10'] / m00, moments['m01'] / m00))
 
     theta = np.arctan2(2 * moments['mu11'], (moments['mu20'] - moments['mu02'])) / 2
-    slope, intercept = si_from_ct(centroid, theta)
+    slope, intercept = si_from_ct(centroid, theta, processed_image_array.shape)
     return slope, intercept, theta
 
 
