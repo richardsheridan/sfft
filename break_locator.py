@@ -5,16 +5,16 @@ import numpy as np
 
 from cvutil import make_pyramid, make_log
 from gui import MPLGUI
+from fiber_locator import load_stab_img
 from util import basename_without_stab, peak_local_max, batch, get_files
 
 BREAK_FILENAME = 'breaks.json'
 
 
 class BreakGUI(MPLGUI):
-    def __init__(self, images, stabilize_args=(), fid_args=()):
-        self.images = images
-        self.stabilize_args = stabilize_args
-        self.fid_args = fid_args
+    def __init__(self, image_paths, stabilize_args=()):
+        self.image_paths = image_paths
+        self.load_args = (stabilize_args,)
         self.display_type = 'filtered'
 
         super().__init__()
@@ -33,7 +33,8 @@ class BreakGUI(MPLGUI):
 
         self.slider_coords = [.3, .3, .55, .03]
 
-        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
+                             valinit=0,
                              label='Frame Number', isparameter=False, forceint=True)
         self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
                              forceint=True)
@@ -44,20 +45,11 @@ class BreakGUI(MPLGUI):
         self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
                              label='Neighborhood', forceint=True)
 
-    def select_frame(self):
-        import os
-        from fiber_locator import load_stab_img
-        image_path = self.images[self.slider_value('frame_number')]
-        print('image:', os.path.basename(image_path))
-        image = load_stab_img(image_path, self.stabilize_args)
-
-        from fiducial_locator import load_fids
-        left, right, self.strain = load_fids(image_path, image, *self.fid_args)
-        print('Strain: {:0.3g} %'.format(self.strain * 100))
-        self.fids = left, right
-
-        self.image = image
-        self.pyramid = make_pyramid(image, 7)
+    @staticmethod
+    def load_image_to_pyramid(image_path, stabilize_args):
+        image = load_stab_img(image_path, stabilize_args)
+        pyramid = make_pyramid(image)
+        return pyramid
 
     def recalculate_vision(self):
         self.recalculate_blobs()
@@ -118,12 +110,12 @@ class BreakGUI(MPLGUI):
 
     def execute_batch(self, event=None):
         parameters = self.parameters
-        breaks = batch(locate_breaks, self.images, *parameters.values())
+        breaks = batch(locate_breaks, self.image_paths, *parameters.values())
         if event is None:
             # called from command line without argument
             return breaks
         else:
-            save_breaks(parameters, breaks, self.images)
+            save_breaks(parameters, breaks, self.image_paths)
 
     def update_frame_number(self, val):
         self.select_frame()

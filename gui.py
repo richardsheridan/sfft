@@ -35,15 +35,25 @@ class MPLGUI:
     cooldown = .01
     fig = NotImplementedAttribute()
     slider_coords = NotImplementedAttribute()
+    image_paths = NotImplementedAttribute()
+    load_args = ()
 
     @staticmethod
-    def load_image_to_pyramid(image_path):
+    def load_image_to_pyramid(image_path, *load_args):
+        """
+        return an image pyramid from a simple image path
+
+        load_args is splatted from self.load_args, but this method must be a staticmethod so that
+        it can be pickled for the processpoolexecutor
+
+        Parameters
+        ----------
+        image_path
+        load_args
+        """
         raise NotImplementedError
 
     def create_layout(self):
-        raise NotImplementedError
-
-    def select_frame(self):
         raise NotImplementedError
 
     def recalculate_vision(self):
@@ -68,9 +78,10 @@ class MPLGUI:
         self._parameter_sliders = []
         self.timestamp = perf_counter()
 
-        # NOTE: as of 3/20/17, TPE and PPE are the same speed for normal workloads, so use safer PPE
+        # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
         e = ProcessPoolExecutor()
-        self.future_pyramids = [e.submit(self.load_image_to_pyramid, image_path) for image_path in self.image_paths]
+        self.future_pyramids = [e.submit(self.load_image_to_pyramid, image_path, *self.load_args)
+                                for image_path in self.image_paths]
         e.shutdown(False)
 
         self.create_layout()
@@ -86,8 +97,10 @@ class MPLGUI:
 
         plt.show()
 
-    def get_pyramid(self, frame_number):
-        return self.future_pyramids[frame_number].result()
+    def select_frame(self):
+        if 'frame_number' not in self.sliders:
+            raise NotImplementedError('Be sure to create a slider named "frame_number"!')
+        self.pyramid = self.future_pyramids[self.slider_value('frame_number')].result()
 
     def create_figure(self, size=(8,10)):
         import matplotlib.pyplot as plt

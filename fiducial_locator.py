@@ -4,6 +4,7 @@ import numpy as np
 
 from cvutil import make_pyramid
 from gui import MPLGUI
+from fiber_locator import load_stab_img
 from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, batch, \
     gaussian, convolve, quadratic_subpixel_extremum_1d
 
@@ -11,9 +12,9 @@ FIDUCIAL_FILENAME = 'fiducials.json'
 
 
 class FidGUI(MPLGUI):
-    def __init__(self, images, stabilize_args=()):
-        self.images = images
-        self.stabilize_args = stabilize_args
+    def __init__(self, image_paths, stabilize_args=()):
+        self.image_paths = image_paths
+        self.load_args = (stabilize_args,)
 
         super().__init__()
 
@@ -30,7 +31,8 @@ class FidGUI(MPLGUI):
 
         self.slider_coords = [.3, .20, .55, .03]
 
-        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.images) - 1, valinit=0,
+        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
+                             valinit=0,
                              label='Frame Number', isparameter=False, forceint=True)
         self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=4, label='Pyramid Level',
                              forceint=True)
@@ -38,11 +40,11 @@ class FidGUI(MPLGUI):
                              label='Filter Width')
         self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=60, valinit=30, label='Amplitude Cutoff')
 
-    def select_frame(self):
-        image_path = self.images[self.slider_value('frame_number')]
-        from fiber_locator import load_stab_img
-        self.image = image = load_stab_img(image_path, *self.stabilize_args)
-        self.pyramid = make_pyramid(image)
+    @staticmethod
+    def load_image_to_pyramid(image_path, stabilize_args):
+        image = load_stab_img(image_path, *stabilize_args)
+        pyramid = make_pyramid(image)
+        return pyramid
 
     def recalculate_vision(self):
         self.recalculate_profile()
@@ -99,13 +101,13 @@ class FidGUI(MPLGUI):
 
     def execute_batch(self, event=None):
         parameters = self.parameters
-        locations = np.array(batch(locate_fids, self.images, *parameters.values()))
+        locations = np.array(batch(locate_fids, self.image_paths, *parameters.values()))
         left_fid, right_fid = locations[:, 0], locations[:, 1]
         if event is None:
             # called from command line without argument
             return left_fid, right_fid
         else:
-            save_fids(parameters, self.images, left_fid, right_fid)
+            save_fids(parameters, self.image_paths, left_fid, right_fid)
 
     def update_frame_number(self, val):
         self.select_frame()

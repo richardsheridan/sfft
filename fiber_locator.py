@@ -50,11 +50,7 @@ class FiberGUI(MPLGUI):
         image = imread(image_path)
         image = correct_tdi_aspect(image)
         pyramid = make_pyramid(image)
-        print('loading: ' + image_path, flush=True)
         return pyramid
-
-    def select_frame(self):
-        self.pyramid = self.get_pyramid(self.slider_value('frame_number'))
 
     def recalculate_vision(self):
         self.recalculate_edges()
