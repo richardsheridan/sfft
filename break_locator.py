@@ -20,10 +20,8 @@ class BreakGUI(GUIPage):
         super().__init__()
 
     def create_layout(self):
-
-        self.create_figure()
-        self.register_axis('image', [.1, .65, .8, .25])
-        self.register_axis('filtered', [.1, .37, .8, .25])
+        self.register_axes('image', [.1, .65, .8, .25])
+        self.register_axes('filtered', [.1, .37, .8, .25])
         # self.artists['profile'] = self.axes['profile'].plot(0)[0]
         # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
@@ -31,7 +29,7 @@ class BreakGUI(GUIPage):
         self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget='RadioButtons',
                              labels=('filtered', 'thresholded',))
 
-        self.slider_coords = [.3, .3, .55, .03]
+        self.slider_coord = .3
 
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
                              valinit=0,
@@ -73,40 +71,25 @@ class BreakGUI(GUIPage):
         print(len(row_index))
 
     def refresh_plot(self):
-        ax = self.axes['image']
-        ax.clear()
-        # ax.imshow(cv2.resize(self.pyramid[self.slider_value('p_level')], DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
-        ax.imshow(self.pyramid[self.slider_value('p_level')],
-                  cmap='gray',
-                  extent=[0, 1, 1, 0],
-                  aspect='auto',
-                  )  # TODO: use extent=[0,real_width,0,real_height] and aspect='auto'
-        self.artists['image_breaks'] = ax.plot(self.locations[1],  # * DISPLAY_SIZE[0],
-                                               self.locations[0],  # * DISPLAY_SIZE[1],
-                                               'rx', ms=10)[0]
+        image = self.pyramid[self.slider_value('p_level')]
+        self.clear('image')
+        # TODO: use extent=[0,real_width,0,real_height]
+        self.imshow('image', image, extent=[0, 1, 1, 0])
+        self.plot('image', self.locations[1], self.locations[0], 'rx', ms=10)
 
-        image = self.filtered_image
+        filtered = self.filtered_image
         if self.display_type == 'thresholded':
             break_amp = self.slider_value('cutoff')
-            image = (image > break_amp).view(np.uint8)
-        ax = self.axes['filtered']
-        ax.clear()
-        # ax.imshow(cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC),
-        ax.imshow(image,
-                  cmap='gray',
-                  extent=[0, 1, 1, 0],
-                  aspect='auto',
-                  )
-        self.artists['image_breaks'] = ax.plot(self.locations[1],  # * DISPLAY_SIZE[0],
-                                               self.locations[0],  # * DISPLAY_SIZE[1],
-                                               'rx', ms=10)[0]
+            filtered = (filtered > break_amp).view(np.uint8)
+        self.clear('filtered')
+        self.imshow('filtered', filtered, extent=[0, 1, 1, 0])
+        self.plot('filtered', self.locations[1], self.locations[0], 'rx', ms=10)
 
         mask_width = self.slider_value('mask_width')
-        self.artists['mask_lines'] = [ax.axhspan(0.001, mask_width, facecolor='r', alpha=0.3),
-                                      ax.axhspan(.999 - mask_width, 1, facecolor='r', alpha=0.3),
-                                      ]
+        self.hspan('filtered', 0.001, mask_width, facecolor='r', alpha=0.3)
+        self.hspan('filtered', .999 - mask_width, 1, facecolor='r', alpha=0.3)
 
-        self.fig.canvas.draw()
+        self.draw()
 
     def execute_batch(self, event=None):
         parameters = self.parameters

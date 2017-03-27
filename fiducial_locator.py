@@ -19,17 +19,12 @@ class FidGUI(GUIPage):
         super().__init__()
 
     def create_layout(self):
-
-        self.create_figure()
-        self.register_axis('image',[.1,.65,.8,.3])
-        self.register_axis('profile',[.1,.3,.8,.3])
-        self.artists['profile'] = self.axes['profile'].plot(0)[0]
-        self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        self.artists['profile_fids'] = self.axes['profile'].plot([100] * 2, [100] * 2, 'r.', ms=10)[0]
+        self.register_axes('image', [.1, .65, .8, .3])
+        self.register_axes('profile', [.1, .3, .8, .3])
 
         self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
 
-        self.slider_coords = [.3, .20, .55, .03]
+        self.slider_coord = .20
 
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
                              valinit=0,
@@ -70,34 +65,27 @@ class FidGUI(GUIPage):
         print(self.locations)
 
     def refresh_plot(self):
-        ax = self.axes['image']
-        ax.clear()
+        self.clear('image')
         display_image = self.pyramid[self.slider_value('p_level')]
         r, c = display_image.shape
-        ax.imshow(display_image, cmap='gray', aspect='auto')
+
+        self.imshow('image', display_image)
         for loc in self.locations:
-            name = 'image_fids_{}'.format(loc)
-            self.artists[name] = ax.axvline(loc * c, color='r')
+            self.vline('image', loc * c, color='r')
 
         l = len(self.filtered_profile)
         locations = self.locations * (l - 1)
-        self.artists['profile'].set_xdata(np.arange(l))
-        self.artists['profile'].set_ydata(self.filtered_profile)
-
-        self.artists['profile_fids'].set_xdata(locations)
+        self.clear('profile')
+        self.plot('profile', np.arange(l), self.filtered_profile, 'b')
         if not np.any(np.isnan(locations)):
             value_at_locations = np.interp(locations, np.arange(l), self.filtered_profile)
         else:
             value_at_locations = [0, 0]
-        self.artists['profile_fids'].set_ydata(value_at_locations)
+        self.plot('profile', locations, value_at_locations, 'r.')
 
-        self.artists['cutoff'].set_xdata([0, len(self.profile)])
-        self.artists['cutoff'].set_ydata([self.slider_value('cutoff')] * 2)
+        self.hline('profile', self.slider_value('cutoff'), color='black', linestyle=':')
 
-        self.axes['profile'].relim()
-        self.axes['profile'].autoscale_view()
-
-        self.fig.canvas.draw()
+        self.draw()
 
     def execute_batch(self, event=None):
         parameters = self.parameters

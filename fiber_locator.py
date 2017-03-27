@@ -16,8 +16,7 @@ class FiberGUI(GUIPage):
         super().__init__()
 
     def create_layout(self):
-        self.create_figure()
-        self.register_axis('image', [.1, .3, .8, .55])
+        self.register_axes('image', [.1, .3, .8, .55])
 
         self.register_button('save', self.execute_batch, [.3, .92, .2, .05], label='Save batch')
         self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget='RadioButtons',
@@ -25,7 +24,7 @@ class FiberGUI(GUIPage):
         # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget='RadioButtons',
         #                      labels=('sobel', 'laplace'))
 
-        self.slider_coords = [.3, .2, .55, .03]
+        self.slider_coord = .2
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
                              valinit=0,
                              label='Frame number', isparameter=False, forceint=True)
@@ -74,7 +73,7 @@ class FiberGUI(GUIPage):
         self.vshift = vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
 
     def refresh_plot(self):
-        self.axes['image'].clear()
+        self.clear('image')
         label = self.display_type
         if label == 'original':
             p_level = self.slider_value('p_level')
@@ -99,27 +98,9 @@ class FiberGUI(GUIPage):
 
         self.display_image_array = image  # .astype('uint8')
         # image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
-        self.axes['image'].imshow(image, cmap='gray', aspect='auto')
+        self.imshow('image', image)
         # TODO: draw line using matplotlib overlay
-        self.fig.canvas.draw()
-
-    def set_display_type(self, label):
-        self.display_type = label
-
-        self.refresh_plot()
-
-    # def edge_type(self, label):
-    #
-    #     if label == 'sobel':
-    #         self.filter_fun = sobel_filter
-    #     elif label == 'laplace':
-    #         self.filter_fun = laplacian_filter
-    #     else:
-    #         print('unknown edge type:', label)
-    #         return
-    #
-    #     self.recalculate_vision()
-    #     self.refresh_plot()
+        self.draw()
 
     def execute_batch(self, event):
         threshold, p_level = self.parameters.values()
@@ -128,6 +109,10 @@ class FiberGUI(GUIPage):
         images = self.image_paths
         x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
         save_stab(images, x, threshold, p_level)
+
+    def set_display_type(self, label):
+        self.display_type = label
+        self.refresh_plot()
 
     def update_frame_number(self, val):
         self.select_frame()

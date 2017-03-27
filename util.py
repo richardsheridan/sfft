@@ -1,6 +1,6 @@
 import sys, os, json
-from tkplay import Tk
-from tkplay.filedialog import askopenfilename, asksaveasfilename, askdirectory
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
 import numpy as np
 # from numpy import convolve
 from vendored_scipy import fftconvolve as convolve, ricker, gaussian
@@ -67,9 +67,9 @@ def get_files():
     Tk().withdraw()
 
     # show an "Open" dialog box and return the paths to the selected files
-    fullpaths = askopenfilename(multiple=1, filetypes=(('Images', ('.tif', '.jpg', '.jpeg')),
-                                                       ('TIF', '.tif'),
+    fullpaths = askopenfilename(multiple=1, filetypes=(('TIF', '.tif'),
                                                        ('JPEG', ('.jpg', '.jpeg')),
+                                                       ('Images', ('.tif', '.jpg', '.jpeg')),
                                                        ('All files', '*')))
     fullpaths = sorted(os.path.normpath(path.lower()) for path in fullpaths)
 
