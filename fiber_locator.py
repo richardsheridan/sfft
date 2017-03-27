@@ -2,12 +2,13 @@ from os import path
 
 from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_tdi_aspect, fit_line_moments, \
     rotate_fiber, imwrite, imread, binary_threshold
-from gui import MPLGUI
+from gui import GUIPage
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
 STABILIZE_FILENAME = 'stabilize.json'
 
-class FiberGUI(MPLGUI):
+
+class FiberGUI(GUIPage):
     def __init__(self, image_paths):
         self.image_paths = image_paths
         self.display_type = 'original'

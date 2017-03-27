@@ -3,7 +3,7 @@ from os import path
 import numpy as np
 
 from cvutil import make_pyramid
-from gui import MPLGUI
+from gui import GUIPage
 from fiber_locator import load_stab_img
 from util import wavelet_filter, find_zero_crossings, get_files, basename_without_stab, batch, \
     gaussian, convolve, quadratic_subpixel_extremum_1d
@@ -11,7 +11,7 @@ from util import wavelet_filter, find_zero_crossings, get_files, basename_withou
 FIDUCIAL_FILENAME = 'fiducials.json'
 
 
-class FidGUI(MPLGUI):
+class FidGUI(GUIPage):
     def __init__(self, image_paths, stabilize_args=()):
         self.image_paths = image_paths
         self.load_args = (stabilize_args,)

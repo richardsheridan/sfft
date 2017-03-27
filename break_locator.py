@@ -4,14 +4,14 @@ from os import path
 import numpy as np
 
 from cvutil import make_pyramid, make_log
-from gui import MPLGUI
+from gui import GUIPage
 from fiber_locator import load_stab_img
 from util import basename_without_stab, peak_local_max, batch, get_files
 
 BREAK_FILENAME = 'breaks.json'
 
 
-class BreakGUI(MPLGUI):
+class BreakGUI(GUIPage):
     def __init__(self, image_paths, stabilize_args=()):
         self.image_paths = image_paths
         self.load_args = (stabilize_args,)

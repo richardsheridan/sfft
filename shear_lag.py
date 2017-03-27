@@ -1,8 +1,8 @@
 from os import path
-from tkinter import Tk
-from tkinter.filedialog import askdirectory
-from tkinter.messagebox import askyesno
-from tkinter.simpledialog import askfloat
+from tkplay import Tk
+from tkplay.filedialog import askdirectory
+from tkplay.messagebox import askyesno
+from tkplay.simpledialog import askfloat
 
 import numpy as np
 

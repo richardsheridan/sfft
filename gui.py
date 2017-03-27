@@ -31,10 +31,8 @@ def _force_int(callback, setter):
     return int_wrapper
 
 
-class MPLGUI:
+class GUIPage:
     cooldown = .01
-    fig = NotImplementedAttribute()
-    slider_coords = NotImplementedAttribute()
     image_paths = NotImplementedAttribute()
     load_args = ()
 
@@ -69,7 +67,7 @@ class MPLGUI:
     def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
-    def __init__(self,block=True):
+    def __init__(self, block=True, backend=PyplotBackend):
 
         self.axes = {}
         self.artists = {}
@@ -77,6 +75,7 @@ class MPLGUI:
         self.sliders = {}
         self._parameter_sliders = []
         self.timestamp = perf_counter()
+        self.backend = backend
 
         # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
         e = ProcessPoolExecutor()
@@ -89,22 +88,12 @@ class MPLGUI:
         self.recalculate_vision()
         self.refresh_plot()
 
-        import matplotlib.pyplot as plt
-        if block:
-            plt.ioff()
-        else:
-            plt.ion()
-
-        plt.show()
+        backend.show(block)
 
     def select_frame(self):
         if 'frame_number' not in self.sliders:
             raise NotImplementedError('Be sure to create a slider named "frame_number"!')
         self.pyramid = self.future_pyramids[self.slider_value('frame_number')].result()
-
-    def create_figure(self, size=(8,10)):
-        import matplotlib.pyplot as plt
-        self.fig = plt.figure(figsize=size)
 
     def register_axis(self, name, coords):
         self._validate_name(name)
@@ -116,18 +105,16 @@ class MPLGUI:
         if label is None:
             label = name
 
-        slider_coords = self.slider_coords
-        ax = self.axes[name] = self.fig.add_axes(slider_coords, label=name)
-        slider_coords[1] -= slider_coords[-1] * (5 / 3)
-
         if fmt is None:
             if forceint:
-                fmt= '%d'
+                fmt = '%d'
             else:
-                fmt='%.3g'
+                fmt = '%.3g'
 
-        from matplotlib.widgets import Slider
-        sl = self.sliders[name] = Slider(ax, valmin=valmin, valmax=valmax, valinit=valinit, valfmt=fmt, label=label)
+        sl = self.sliders[name] = self.backend.make_slider(valmin=valmin, valmax=valmax, valinit=valinit, valfmt=fmt,
+                                                           label=label)
+
+
 
         if isparameter:
             self._register_parameter(name)
@@ -168,3 +155,30 @@ class MPLGUI:
     def parameters(self):
         sl = self.sliders
         return OrderedDict((name, sl[name].val) for name in self._parameter_sliders)
+
+
+class PyplotBackend:
+    fig = NotImplementedAttribute()
+    slider_coords = NotImplementedAttribute()
+
+    def __init__(self):
+        import matplotlib.pyplot as plt
+        self.plt = plt
+
+    def show(self, block):
+        if block:
+            self.plt.ioff()
+        else:
+            self.plt.ion()
+
+        self.plt.show()
+
+    def create_figure(self, size=(8, 10)):
+        self.fig = self.plt.figure(figsize=size)
+
+    def make_slider(self, name, valmin, valmax, valinit, valfmt, label):
+        self.slider_coords[1] -= self.slider_coords[-1] * (5 / 3)
+        ax = self.axes[name] = self.fig.add_axes(self.slider_coords, label=name)
+
+        from matplotlib.widgets import Slider
+        return Slider(valmin, valmax, valinit, valfmt, label)

@@ -1,6 +1,6 @@
 import sys, os, json
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
+from tkplay import Tk
+from tkplay.filedialog import askopenfilename, asksaveasfilename, askdirectory
 import numpy as np
 # from numpy import convolve
 from vendored_scipy import fftconvolve as convolve, ricker, gaussian
