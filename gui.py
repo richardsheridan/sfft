@@ -98,7 +98,6 @@ class GUIPage:
                                 for image_path in self.image_paths]
         e.shutdown(False)
 
-        self.backend.create_figure()
         self.create_layout()
         self.select_frame()
         self.recalculate_vision()
@@ -202,11 +201,11 @@ class MPLWidgetWrapper:
 
 
 class PyplotBackend:
-    fig = NotImplementedAttribute()
 
-    def __init__(self):
+    def __init__(self, size=(8, 10)):
         import matplotlib.pyplot as plt
         self.plt = plt
+        self.fig = self.plt.figure(figsize=size)
 
     def show(self, block):
         if block:
@@ -218,9 +217,6 @@ class PyplotBackend:
 
     def draw(self):
         self.fig.canvas.draw()
-
-    def create_figure(self, size=(8, 10)):
-        self.fig = self.plt.figure(figsize=size)
 
     def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label):
         ax = self.add_axes(coords, label=name)
