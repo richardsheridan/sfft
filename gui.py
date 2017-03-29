@@ -68,7 +68,7 @@ class GUIPage:
     def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
-    def __init__(self, block=True, backend=None):
+    def __init__(self, block=True, backend=None, executor=None):
 
         self.slider_coord = NotImplementedAttribute()
         self.axes = {}
@@ -83,12 +83,13 @@ class GUIPage:
         self.backend = backend
 
         # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-        e = ProcessPoolExecutor()
-        # e = ThreadPoolExecutor()
-        # e = SynchronousExecutor()
-        self.future_pyramids = [e.submit(self.load_image_to_pyramid, image_path, *self.load_args)
+        if executor is None:
+            executor = ProcessPoolExecutor()
+            # executor = ThreadPoolExecutor()
+            # executor = SynchronousExecutor()
+        self.future_pyramids = [executor.submit(self.load_image_to_pyramid, image_path, *self.load_args)
                                 for image_path in self.image_paths]
-        e.shutdown(False)
+        executor.shutdown(False)
 
         self.create_layout()
         self.select_frame()
