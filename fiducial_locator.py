@@ -87,31 +87,27 @@ class FidGUI(GUIPage):
 
         self.draw()
 
-    def execute_batch(self, event=None):
+    def execute_batch(self, *a, **kw):
         parameters = self.parameters
         locations = np.array(batch(locate_fids, self.image_paths, *parameters.values()))
         left_fid, right_fid = locations[:, 0], locations[:, 1]
-        if event is None:
-            # called from command line without argument
-            return left_fid, right_fid
-        else:
-            save_fids(parameters, self.image_paths, left_fid, right_fid)
+        save_fids(parameters, self.image_paths, left_fid, right_fid)
 
-    def update_frame_number(self, val):
+    def update_frame_number(self, *a, **kw):
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_filter_width(self, val):
+    def update_filter_width(self, *a, **kw):
         self.recalculate_locations()
         self.refresh_plot()
 
-    def update_cutoff(self, val):
+    def update_cutoff(self, *a, **kw):
 
         self.recalculate_locations()
         self.refresh_plot()
 
-    def update_p_level(self, val):
+    def update_p_level(self, *a, **kw):
 
         self.recalculate_vision()
         self.refresh_plot()

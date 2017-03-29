@@ -26,8 +26,8 @@ class BreakGUI(GUIPage):
         # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
         # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         self.register_button('save', self.execute_batch, [.3, .95, .2, .03], label='Save batch')
-        self.register_button('display_type', self.set_display_type, [.6, .93, .2, .06], widget='RadioButtons',
-                             labels=('filtered', 'thresholded',))
+        self.register_radiobuttons('display_type', self.set_display_type, [.6, .93, .2, .06],
+                                   labels=('filtered', 'thresholded',))
 
         self.slider_coord = .3
 
@@ -78,7 +78,7 @@ class BreakGUI(GUIPage):
         self.plot('image', self.locations[1], self.locations[0], 'rx', ms=10)
 
         filtered = self.filtered_image
-        if self.display_type == 'thresholded':
+        if self.button_value('display_type') == 'thresholded':
             break_amp = self.slider_value('cutoff')
             filtered = (filtered > break_amp).view(np.uint8)
         self.clear('filtered')
@@ -91,41 +91,36 @@ class BreakGUI(GUIPage):
 
         self.draw()
 
-    def execute_batch(self, event=None):
+    def execute_batch(self, *a, **kw):
         parameters = self.parameters
         breaks = batch(locate_breaks, self.image_paths, *parameters.values())
-        if event is None:
-            # called from command line without argument
-            return breaks
-        else:
-            save_breaks(parameters, breaks, self.image_paths)
+        save_breaks(parameters, breaks, self.image_paths)
 
-    def update_frame_number(self, val):
+    def update_frame_number(self, *a, **kw):
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_p_level(self, val):
+    def update_p_level(self, *a, **kw):
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_filter_width(self, val):
+    def update_filter_width(self, *a, **kw):
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_cutoff(self, val):
+    def update_cutoff(self, *a, **kw):
         self.recalculate_locations()
         self.refresh_plot()
 
-    def update_neighborhood(self, val):
+    def update_neighborhood(self, *a, **kw):
         self.recalculate_locations()
         self.refresh_plot()
 
-    def set_display_type(self, label):
-        self.display_type = label
+    def set_display_type(self, *a, **kw):
         self.refresh_plot()
 
-    def update_mask(self, val):
+    def update_mask(self, *a, **kw):
         self.recalculate_locations()
         self.refresh_plot()
 

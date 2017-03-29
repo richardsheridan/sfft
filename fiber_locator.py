@@ -19,10 +19,8 @@ class FiberGUI(GUIPage):
         self.register_axes('image', [.1, .3, .8, .55])
 
         self.register_button('save', self.execute_batch, [.3, .92, .2, .05], label='Save batch')
-        self.register_button('display_type', self.set_display_type, [.6, .9, .15, .1], widget='RadioButtons',
-                             labels=('original', 'filtered', 'edges', 'rotated'))
-        # self.register_button('edge', self.edge_type, [.8, .9, .15, .1], widget='RadioButtons',
-        #                      labels=('sobel', 'laplace'))
+        self.register_radiobuttons('display_type', self.set_display_type, [.6, .9, .15, .1],
+                                   labels=('original', 'filtered', 'edges', 'rotated'))
 
         self.slider_coord = .2
         self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
@@ -74,7 +72,7 @@ class FiberGUI(GUIPage):
 
     def refresh_plot(self):
         self.clear('image')
-        label = self.display_type
+        label = self.button_value('display_type')
         if label == 'original':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
@@ -102,7 +100,7 @@ class FiberGUI(GUIPage):
         # TODO: draw line using matplotlib overlay
         self.draw()
 
-    def execute_batch(self, event):
+    def execute_batch(self, *a, **kw):
         threshold, p_level = self.parameters.values()
         return_image = False
         save_image = True
@@ -110,16 +108,15 @@ class FiberGUI(GUIPage):
         x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
         save_stab(images, x, threshold, p_level)
 
-    def set_display_type(self, label):
-        self.display_type = label
+    def set_display_type(self, *a, **kw):
         self.refresh_plot()
 
-    def update_frame_number(self, val):
+    def update_frame_number(self, *a, **kw):
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
-    def update_edge(self, val):
+    def update_edge(self, *a, **kw):
 
         self.recalculate_vision()
         self.refresh_plot()
