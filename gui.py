@@ -366,7 +366,7 @@ class TkBackend(Backend):
 
     def make_button(self, name, coords, label=None):
         from tkinter import Button
-        if label == None:
+        if label is None:
             label = name
         b = Button(self.parent, text=label)
         b.pack()
