@@ -1,18 +1,10 @@
 from collections import OrderedDict
-import inspect
+# import inspect
 from time import perf_counter
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, Executor, Future
 
 from numbers import Integral as Int
+from util import make_future_pyramids
 
-
-class SynchronousExecutor(Executor):
-    def submit(self, fn, *args, **kwargs):
-        f = Future()
-        result = fn(*args, **kwargs)
-        # The future is now
-        f.set_result(result)
-        return f
 
 
 class NotImplementedAttribute:
@@ -68,7 +60,7 @@ class GUIPage:
     def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
-    def __init__(self, block=True, backend=None, executor=None):
+    def __init__(self, future_pyramids=None, block=True, backend=None):
 
         self.slider_coord = NotImplementedAttribute()
         self.axes = {}
@@ -83,18 +75,13 @@ class GUIPage:
         self.backend = backend
 
         # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-        if executor is None:
-            executor = ProcessPoolExecutor()
-            # executor = ThreadPoolExecutor()
-            # executor = SynchronousExecutor()
-        self.future_pyramids = [executor.submit(self.load_image_to_pyramid, image_path, *self.load_args)
-                                for image_path in self.image_paths]
-        executor.shutdown(False)
+        if future_pyramids is None:
+            self.future_pyramids = make_future_pyramids(self.image_paths, self.load_image_to_pyramid, self.load_args)
+        else:
+            self.future_pyramids = future_pyramids
 
         self.create_layout()
-        self.select_frame()
-        self.recalculate_vision()
-        self.refresh_plot()
+        self.full_redraw()
 
         backend.show(block)
 
@@ -102,6 +89,11 @@ class GUIPage:
         if 'frame_number' not in self.sliders:
             raise NotImplementedError('Be sure to create a slider named "frame_number"!')
         self.pyramid = self.future_pyramids[self.slider_value('frame_number')].result()
+
+    def full_redraw(self):
+        self.select_frame()
+        self.recalculate_vision()
+        self.refresh_plot()
 
     def register_axes(self, name, coords):
         self._validate_name(name)
@@ -216,6 +208,8 @@ class MPLWidgetWrapper(WidgetWrapper):
 
 
 class TkWidgetWrapper(WidgetWrapper):
+    _callbacks = None
+
     def get(self):
         v = self.widget.get()
         if self.forceint:
@@ -226,7 +220,15 @@ class TkWidgetWrapper(WidgetWrapper):
         self.widget.set(val)
 
     def register(self, callback):
-        self.widget.config(command=callback)
+        if self._callbacks is None:
+            self._callbacks = []
+        self._callbacks.append(callback)
+
+        def combined_callback(*a, **kw):
+            for cb in self._callbacks:
+                cb(*a, *kw)
+
+        self.widget.config(command=combined_callback)
 
 
 class TkRbConsolidator:
@@ -307,7 +309,7 @@ class PyplotBackend(Backend):
 
 
 class TkBackend(Backend):
-    def __init__(self, size=(5, 5), parent=None):
+    def __init__(self, size=(5, 5), master=None):
         self._radiobuttons = {}
         self._scales = {}
         self._labels = {}
@@ -315,39 +317,40 @@ class TkBackend(Backend):
         self.slider_row = 0
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         from matplotlib.figure import Figure
-        if parent is None:
+        if master is None:
             from tkinter import Tk
-            parent = self.parent = Tk()
-            parent.protocol("WM_DELETE_WINDOW", self.on_closing)
+            master = Tk()
+            master.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.master = master
         self.fig = Figure(figsize=size)
-        self.canvas = FigureCanvasTkAgg(self.fig, master=parent)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=master)
         self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
 
     def on_closing(self):
-        self.parent.quit()
-        self.parent.destroy()
+        self.master.quit()
+        self.master.destroy()
 
     def show(self, block=True):
         self.canvas.show()
         if block:
-            self.parent.mainloop()
+            self.master.mainloop()
 
     def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label, forceint):
-        from tkinter import IntVar, DoubleVar, StringVar, Frame
-        from tkinter.ttk import Label, Scale
+        from tkinter import IntVar, DoubleVar, StringVar
+        from tkinter.ttk import Label, Scale, Frame
         if self.slider_frame is None:
-            frame = self.slider_frame = Frame(self.parent, )
+            frame = self.slider_frame = Frame(self.master, )
         else:
             frame = self.slider_frame
 
         if forceint:
-            v = IntVar(self.parent)
+            v = IntVar(self.master)
         else:
-            v = DoubleVar(self.parent)
+            v = DoubleVar(self.master)
 
         s = self._scales[name] = Scale(frame, variable=v, from_=valmin, to=valmax, length=200)
 
-        num_sv = StringVar(self.parent)
+        num_sv = StringVar(self.master)
 
         def label_callback(*args):
             num_sv.set(valfmt % v.get())
@@ -368,16 +371,16 @@ class TkBackend(Backend):
         from tkinter import Button
         if label is None:
             label = name
-        b = Button(self.parent, text=label)
+        b = Button(self.master, text=label)
         b.pack()
         return TkWidgetWrapper(b)
 
     def make_radiobuttons(self, name, coords, labels=None):
-        from tkinter import StringVar, Frame
-        from tkinter.ttk import Radiobutton
-        v = StringVar(self.parent)
+        from tkinter import StringVar
+        from tkinter.ttk import Radiobutton, Frame
+        v = StringVar(self.master)
         v.set(labels[0])
-        f = Frame(self.parent, relief='groove', borderwidth=2)
+        f = Frame(self.master, relief='groove', borderwidth=2)
         for label in labels:
             b = self._radiobuttons[name + label] = Radiobutton(f, variable=v, text=label, value=label)
             b.pack(anchor='w')

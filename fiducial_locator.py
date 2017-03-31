@@ -12,11 +12,14 @@ FIDUCIAL_FILENAME = 'fiducials.json'
 
 
 class FidGUI(GUIPage):
-    def __init__(self, image_paths, stabilize_args=()):
+    def __init__(self, image_paths, stabilize_args=(), **kw):
         self.image_paths = image_paths
         self.load_args = (stabilize_args,)
 
-        super().__init__()
+        super().__init__(**kw)
+
+    def __str__(self):
+        return 'FidGUI'
 
     def create_layout(self):
         self.register_axes('image', [.1, .65, .8, .3])

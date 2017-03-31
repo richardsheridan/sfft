@@ -5,6 +5,7 @@ import numpy as np
 # from numpy import convolve
 from vendored_scipy import fftconvolve as convolve, ricker, gaussian
 from numbers import Integral as Int, Number
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, Executor, Future
 
 STABILIZE_PREFIX = 'stab_'
 VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
@@ -14,6 +15,14 @@ PARALLEL_BATCH_PROCESSING = True
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
 
+
+class SynchronousExecutor(Executor):
+    def submit(self, fn, *args, **kwargs):
+        f = Future()
+        result = fn(*args, **kwargs)
+        # The future is now
+        f.set_result(result)
+        return f
 
 class NdarrayEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -119,6 +128,34 @@ def put_file():
         print('No file selected')
         return
 
+
+def make_future_pyramids(image_paths, pyramid_loader, load_args, executor=None):
+    """
+    Make a list of futures such that all images are loaded in parallel but one can be requested ASAP
+    
+    This works almost like Executor.map except we don't iterate over the list and request results for you
+    This way it is a bit lazier, but client code needs to be aware of calling .result() on the futures
+
+    Parameters
+    ----------
+    image_paths
+    pyramid_loader
+    load_args
+    executor
+
+    Returns
+    -------
+    list of futures containing image pyramids
+    """
+    # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
+    if executor is None:
+        # executor = ProcessPoolExecutor()
+        # executor = ThreadPoolExecutor()
+        executor = SynchronousExecutor()
+    future_pyramids = [executor.submit(pyramid_loader, image_path, *load_args)
+                       for image_path in image_paths]
+    executor.shutdown(False)
+    return future_pyramids
 
 def wavelet_filter(series, sigma, bandwidth=None):
     window_size = int(sigma * 9)

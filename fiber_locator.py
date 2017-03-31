@@ -9,11 +9,14 @@ STABILIZE_FILENAME = 'stabilize.json'
 
 
 class FiberGUI(GUIPage):
-    def __init__(self, image_paths):
+    def __init__(self, image_paths, **kw):
         self.image_paths = image_paths
         self.display_type = 'original'
 
-        super().__init__()
+        super().__init__(**kw)
+
+    def __str__(self):
+        return 'FiberGUI'
 
     def create_layout(self):
         self.register_axes('image', [.1, .3, .8, .55])
