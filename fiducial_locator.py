@@ -264,12 +264,14 @@ def load_strain(dirname):
 
 
 def save_fids(parameters, images, left_fids, right_fids):
+    folder = path.dirname(images[0])
+    from util import parse_strain_headers
+    tdi_length = parse_strain_headers(folder)[1]
     initial_displacement = right_fids[0] - left_fids[0]
     strains = (right_fids - left_fids) / initial_displacement - 1
-    parameters.update({'initial_displacement': initial_displacement *  19000, # TODO: get size info from strain.dat
+    parameters.update({'initial_displacement': initial_displacement * tdi_length * 1e4,
                        'fields': 'name: (left, right, strain)'})
 
-    folder = path.dirname(images[0])
 
     fnames = [basename_without_stab(image) for image in images]
     print('Saving parameters and locations to:')
