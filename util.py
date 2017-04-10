@@ -46,26 +46,39 @@ def dump(obj, fp):
     fp.writelines(_default_encoder.iterencode(obj))
 
 
-def batch(function, image_paths, *args, parallel=PARALLEL_BATCH_PROCESSING):
-    """
-    Pool.map can't deal with lambdas, closures, or functools.partial, so we fake it with itertools
-    :param function:
-    :param image_paths:
-    :param args:
-    :param parallel:
-    :return:
-    """
-    from itertools import starmap, repeat
-    args = repeat(args)
-    args = [(image_path, *arg) for image_path, arg in zip(image_paths, args)]
+# NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
+executor = ProcessPoolExecutor()
 
-    if parallel:
-        from multiprocessing import pool, freeze_support
-        freeze_support()
-        p = pool.Pool()  # TODO: one long-lived pool would be better
-        starmap = p.starmap
 
-    return list(starmap(function, args))
+# executor = ThreadPoolExecutor()
+# executor = SynchronousExecutor()
+
+
+def batch(func, image_paths, *args, return_futures=False):
+    """
+    Submit a batch of image_paths to be processed with function func and supplimental arguments args.
+    
+    By default we block and computer/return the results in order they were submitted. Optionally, you
+    can return some Futures with the return_futures keyword argument and request the result as needed.
+    
+    Parallelism is determined by the class of executor from the module scope
+
+    Parameters
+    ----------
+    func : function
+    image_paths : List[str]
+    args : tuple
+    return_futures : bool
+
+    Returns
+    -------
+    list[Future] or list[Any]
+    """
+    futures = [executor.submit(func, image_path, *args) for image_path in image_paths]
+    if return_futures:
+        return futures
+    results = [future.result() for future in futures]
+    return results
 
 
 def get_files():
@@ -135,34 +148,6 @@ def put_file():
         print('No file selected')
         return
 
-
-def make_future_pyramids(image_paths, pyramid_loader, load_args, executor=None):
-    """
-    Make a list of futures such that all images are loaded in parallel but one can be requested ASAP
-    
-    This works almost like Executor.map except we don't iterate over the list and request results for you
-    This way it is a bit lazier, but client code needs to be aware of calling .result() on the futures
-
-    Parameters
-    ----------
-    image_paths
-    pyramid_loader
-    load_args
-    executor
-
-    Returns
-    -------
-    list of futures containing image pyramids
-    """
-    # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-    if executor is None:
-        executor = ProcessPoolExecutor()
-        # executor = ThreadPoolExecutor()
-        # executor = SynchronousExecutor()
-    future_pyramids = [executor.submit(pyramid_loader, image_path, *load_args)
-                       for image_path in image_paths]
-    executor.shutdown(False)
-    return future_pyramids
 
 def wavelet_filter(series, sigma, bandwidth=None):
     window_size = int(sigma * 9)

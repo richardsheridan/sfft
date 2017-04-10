@@ -3,8 +3,7 @@ from collections import OrderedDict
 from time import perf_counter
 
 from numbers import Integral as Int
-from util import make_future_pyramids
-
+from util import batch
 
 
 class NotImplementedAttribute:
@@ -89,7 +88,8 @@ class GUIPage:
 
     def full_reload(self, *args, **kwargs):
         if self.dirty or (self.future_pyramids is None) or (self.load_args != self._old_load_args):
-            self.future_pyramids = make_future_pyramids(self.image_paths, self.load_image_to_pyramid, self.load_args)
+            self.future_pyramids = batch(self.load_image_to_pyramid, self.image_paths, *self.load_args,
+                                         return_futures=1)
             self._old_load_args = self.load_args
             self.dirty = False
         self.select_frame()
