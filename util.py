@@ -73,7 +73,8 @@ def get_files():
     Open a dialog and return a set of files to parse.
     """
     # we don't want a full GUI, so keep the root window from appearing
-    Tk().withdraw()
+    tk = Tk()
+    tk.withdraw()
 
     # show an "Open" dialog box and return the paths to the selected files
     fullpaths = askopenfilename(multiple=1, filetypes=(('TIF', '.tif'),
@@ -87,7 +88,8 @@ def get_files():
     else:
         print('No files selected')
         sys.exit()
-
+    tk.quit()
+    tk.destroy()
     return fullpaths
 
 
@@ -96,7 +98,8 @@ def get_folder():
     Open a dialog and return a folder.
     """
     # we don't want a full GUI, so keep the root window from appearing
-    Tk().withdraw()
+    tk = Tk()
+    tk.withdraw()
 
     # show an "Open" dialog box and return the selected folder
     directory = askdirectory()
@@ -106,6 +109,8 @@ def get_folder():
     else:
         print('No files selected')
         sys.exit()
+    tk.quit()
+    tk.destroy()
 
     return directory
 
@@ -115,12 +120,14 @@ def put_file():
     Open a dialog and return a path for save file.
     """
     # we don't want a full GUI, so keep the root window from appearing
-    Tk().withdraw()
+    tk = Tk()
+    tk.withdraw()
 
     # show an "Open" dialog box and return the paths to the selected files
     fullpath = asksaveasfilename(filetypes=(('DAT', '.dat'), ('All files', '*')),
                                  defaultextension='.dat')
-
+    tk.quit()
+    tk.destroy()
     if fullpath:
         print('Saving data as:', fullpath)
         return fullpath
@@ -149,9 +156,9 @@ def make_future_pyramids(image_paths, pyramid_loader, load_args, executor=None):
     """
     # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
     if executor is None:
-        # executor = ProcessPoolExecutor()
+        executor = ProcessPoolExecutor()
         # executor = ThreadPoolExecutor()
-        executor = SynchronousExecutor()
+        # executor = SynchronousExecutor()
     future_pyramids = [executor.submit(pyramid_loader, image_path, *load_args)
                        for image_path in image_paths]
     executor.shutdown(False)

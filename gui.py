@@ -28,6 +28,7 @@ class GUIPage:
     cooldown = .01
     image_paths = NotImplementedAttribute()
     load_args = ()
+    _old_load_args = ()
 
     @staticmethod
     def load_image_to_pyramid(image_path, *load_args):
@@ -60,7 +61,7 @@ class GUIPage:
     def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
-    def __init__(self, future_pyramids=None, block=True, backend=None):
+    def __init__(self, block=True, backend=None, defer_initial_draw=False):
 
         self.slider_coord = NotImplementedAttribute()
         self.axes = {}
@@ -68,20 +69,16 @@ class GUIPage:
         self.buttons = {}
         self.sliders = {}
         self._parameter_sliders = []
-        self.timestamp = perf_counter()
+        self.future_pyramids = None
+        self.dirty = True
         if backend is None:
             # backend = PyplotBackend()
             backend = TkBackend()
         self.backend = backend
 
-        # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-        if future_pyramids is None:
-            self.future_pyramids = make_future_pyramids(self.image_paths, self.load_image_to_pyramid, self.load_args)
-        else:
-            self.future_pyramids = future_pyramids
-
         self.create_layout()
-        self.full_redraw()
+        if not defer_initial_draw:
+            self.full_reload()
 
         backend.show(block)
 
@@ -90,7 +87,11 @@ class GUIPage:
             raise NotImplementedError('Be sure to create a slider named "frame_number"!')
         self.pyramid = self.future_pyramids[self.slider_value('frame_number')].result()
 
-    def full_redraw(self):
+    def full_reload(self, *args, **kwargs):
+        if self.dirty or (self.future_pyramids is None) or (self.load_args != self._old_load_args):
+            self.future_pyramids = make_future_pyramids(self.image_paths, self.load_image_to_pyramid, self.load_args)
+            self._old_load_args = self.load_args
+            self.dirty = False
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
