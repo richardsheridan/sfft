@@ -13,7 +13,7 @@ from fiducial_locator import load_strain, FidGUI
 from gui import GUIPage
 from util import parse_strain_dat, get_files, parse_strain_headers
 
-IFSS_FILENAME = 'ifss.json'
+SHEAR_LAG_FILENAME = 'shear_lag.json'
 
 # TODO: collect fiber radius for each dataset from image analysis (fiber_locator.py?)
 radius_dict = {'pristine': 5.78,
@@ -65,8 +65,8 @@ class ShearLagGUI(GUIPage):
         parameters = self.parameters
         folder = path.dirname(self.image_paths[0])
         dataset = load_dataset(folder)
-        ifss = calc_ifss(dataset, *parameters.values())
-        save_ifss(parameters, ifss, folder)
+        result = calc_shear_lag(dataset, *parameters.values())
+        save_shear_lag(parameters, folder, result)
 
     def update_frame_number(self, *a, **kw):
         pass
@@ -159,7 +159,7 @@ Result = namedtuple('Result',
                     'saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks')
 
 
-def calc_ifss(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_poisson=None):
+def calc_shear_lag(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_poisson=None):
     break_count, avg_frag_len, strains, matrix_stress, label = dataset
     if fiber_radius is None:
         fiber_radius = radius_dict[label]
@@ -183,7 +183,7 @@ def calc_ifss(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_poisso
                   break_count[-1])
 
 
-def save_ifss(parameters, folder, result):
+def save_shear_lag(parameters, folder, result):
     headers = dict(parameters)
 
     label, tdi_length, width, thickness, fid_estimate = parse_strain_headers(folder)
@@ -193,17 +193,17 @@ def save_ifss(parameters, folder, result):
     result = result._asdict()
     output = [headers, result]
 
-    ifss_path = path.join(folder, IFSS_FILENAME)
+    shear_lag_path = path.join(folder, SHEAR_LAG_FILENAME)
     from util import dump
     mode = 'w'
-    with open(ifss_path, mode) as file:
+    with open(shear_lag_path, mode) as file:
         dump(output, file)
 
 
-def load_ifss(folder):
-    ifss_path = path.join(folder, IFSS_FILENAME)
+def load_shear_lag(folder):
+    shear_lag_path = path.join(folder, SHEAR_LAG_FILENAME)
 
-    with open(ifss_path) as fp:
+    with open(shear_lag_path) as fp:
         header, data = json.load(fp)
     return header, data
 
@@ -222,7 +222,7 @@ if __name__ == '__main__':
 
     break_count, avg_frag_len, strains, matrix_stress, label = dataset = load_dataset(folder)
     saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks = \
-        calc_ifss(dataset, fiber_modulus=80, K=.668)
+        calc_shear_lag(dataset, fiber_modulus=80, K=.668)
 
     print('l_c: %.3g um' % critical_length)
     print('KT IFSS: %.3g MPa' % ifss_kt)
