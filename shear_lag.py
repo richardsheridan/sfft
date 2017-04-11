@@ -1,15 +1,19 @@
+import json
+from collections import namedtuple
 from os import path
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
 from tkinter.messagebox import askyesno
-from tkinter.simpledialog import askfloat
 
 import numpy as np
 
 from break_locator import load_breaks, BreakGUI
 from fiber_locator import FiberGUI
 from fiducial_locator import load_strain, FidGUI
-from util import parse_strain_dat, get_files
+from gui import GUIPage
+from util import parse_strain_dat, get_files, parse_strain_headers
+
+IFSS_FILENAME = 'ifss.json'
 
 # TODO: collect fiber radius for each dataset from image analysis (fiber_locator.py?)
 radius_dict = {'pristine': 5.78,
@@ -20,8 +24,57 @@ radius_dict = {'pristine': 5.78,
                'c9': 7.59,
                }
 
+
+class ShearLagGUI(GUIPage):
+    def __init__(self, image_paths, stabilize_args=(), fid_args=(), break_args=(), **kw):
+        self.image_paths = image_paths
+        self.load_args = (stabilize_args, fid_args, break_args)
+
+        super().__init__(**kw)
+
+    def __str__(self):
+        return 'ShearLagGUI'
+
+    def create_layout(self):
+        self.register_button('save', self.execute_batch, [.3, .95, .2, .03], label='Save results')
+
+        self.slider_coord = .3
+
+        self.register_slider('k', self.update_p_level, valmin=0.5, valmax=0.8, valinit=.667, label='K')
+        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=2,
+                             label='Filter Width')
+        self.register_slider('mask_width', self.update_mask, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
+        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
+        self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
+                             label='Neighborhood', forceint=True)
+
+    @staticmethod
+    def load_image_to_pyramid(*args):
+        pass
+
+    def select_frame(self):
+        pass
+
+    def recalculate_vision(self):
+        pass
+
+    def refresh_plot(self):
+        pass
+
+    def execute_batch(self, *a, **kw):
+        parameters = self.parameters
+        folder = path.dirname(self.image_paths[0])
+        dataset = load_dataset(folder)
+        ifss = calc_ifss(dataset, *parameters.values())
+        save_ifss(parameters, ifss, folder)
+
+    def update_frame_number(self, *a, **kw):
+        pass
+
+
 def choose_dataset():
-    Tk().withdraw()
+    tk = Tk()
+    tk.withdraw()
     folder = askdirectory(title='Choose dataset to analyze', mustexist=True)
     if not len(folder):
         print('No data selected')
@@ -29,15 +82,18 @@ def choose_dataset():
         sys.exit()
     folder = path.normpath(folder)
     print('User opened:', folder)
+    tk.quit()
+    tk.destroy()
     return folder
 
+
+Dataset = namedtuple('Dataset', 'break_count, avg_frag_len, strains, matrix_stress, label')
 
 def load_dataset(folder):
     matrix_stress, label = parse_strain_dat(folder)
     label = label.strip().lower()
     print(label)
     label = label.split()[0]
-    fiber_radius = radius_dict[label]
 
     fid_strains, initial_displacement = load_strain(folder)
     names_breaks = load_breaks(folder, 'count')
@@ -60,8 +116,8 @@ def load_dataset(folder):
     avg_frag_len = initial_displacement / (break_count + 1)
 
     good_strains = np.hstack(((True,), (np.diff(strains) > 0)))  # strip points with clutch slip
-    return break_count[good_strains], avg_frag_len[good_strains], strains[good_strains], matrix_stress[
-        good_strains], fiber_radius
+    return Dataset(break_count[good_strains], avg_frag_len[good_strains], strains[good_strains], matrix_stress[
+        good_strains], label)
 
 
 def calc_fiber_stress(strain, fiber_modulus, fiber_poisson=None, matrix_modulus=None, matrix_poisson=0.5):
@@ -98,6 +154,61 @@ def interpolate(x, xp, fp):
     # print(x,xp,fp,sep='\n')
     return np.interp(-x, -xp, fp)
 
+
+Result = namedtuple('Result',
+                    'saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks')
+
+
+def calc_ifss(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_poisson=None):
+    break_count, avg_frag_len, strains, matrix_stress, label = dataset
+    if fiber_radius is None:
+        fiber_radius = radius_dict[label]
+    matrix_radius = 12 * fiber_radius
+    saturation_aspect_ratio = avg_frag_len[-1] / (2 * fiber_radius)
+    critical_length = avg_frag_len[-1] / K
+    strain_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, strains)
+
+    with np.errstate(divide='ignore'):
+        matrix_modulus = interpolate(2.0 * critical_length, avg_frag_len, matrix_stress / strains)  # secant modulus
+    matrix_poisson = 0.5
+    fiber_modulus *= 1000
+    fiber_stress = calc_fiber_stress(strains, fiber_modulus, fiber_poisson, matrix_modulus, matrix_poisson)
+
+    stress_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
+    f_kt = kt_multiplier(critical_length)
+    f_cox = cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)
+    ifss_kt = fiber_radius * f_kt * stress_at_l_c
+    ifss_cox = fiber_radius * f_cox * stress_at_l_c
+    return Result(saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c,
+                  break_count[-1])
+
+
+def save_ifss(parameters, folder, result):
+    headers = dict(parameters)
+
+    label, tdi_length, width, thickness, fid_estimate = parse_strain_headers(folder)
+    fiber_type = label.strip().lower().split()[0]
+    headers.update({'fiber_type': fiber_type, })
+
+    result = result._asdict()
+    output = [headers, result]
+
+    ifss_path = path.join(folder, IFSS_FILENAME)
+    from util import dump
+    mode = 'w'
+    with open(ifss_path, mode) as file:
+        dump(output, file)
+
+
+def load_ifss(folder):
+    ifss_path = path.join(folder, IFSS_FILENAME)
+
+    with open(ifss_path) as fp:
+        header, data = json.load(fp)
+    return header, data
+
+
+
 if __name__ == '__main__':
     folder = choose_dataset()
     Tk().withdraw()
@@ -108,29 +219,17 @@ if __name__ == '__main__':
         BreakGUI(images)
         folder = path.dirname(images[0])
     print(path.basename(folder))
-    break_count, avg_frag_len, strains, matrix_stress, fiber_radius = load_dataset(folder)
-    fiber_modulus = 80000
-    fiber_stress = calc_fiber_stress(strains, fiber_modulus)
 
-    K = .668
-    critical_length = avg_frag_len[-1] / K
-    stress_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
-    strain_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, strains)
-    np.seterr(divide='ignore')
-    matrix_modulus = interpolate(2.0 * critical_length, avg_frag_len, matrix_stress / strains)  # secant modulus
-    np.seterr(divide='warn')
-    # multiplier = kt_multiplier(l_c)
-    #
-    matrix_radius = 12 * fiber_radius
-    # multiplier = cox_multiplier(l_c, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)
-    ifss = fiber_radius * stress_at_l_c
+    break_count, avg_frag_len, strains, matrix_stress, label = dataset = load_dataset(folder)
+    saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks = \
+        calc_ifss(dataset, fiber_modulus=80, K=.668)
+
     print('l_c: %.3g um' % critical_length)
-    print('KT IFSS: %.3g MPa' % (ifss * kt_multiplier(critical_length)))
-    print('COX IFSS: %.3g MPa' % (
-            ifss * cox_multiplier(critical_length, fiber_radius, fiber_modulus, matrix_radius, matrix_modulus)))
+    print('KT IFSS: %.3g MPa' % ifss_kt)
+    print('COX IFSS: %.3g MPa' % ifss_cox)
     print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
     print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
-    print('Breaks: %d' % break_count[-1])
+    print('Breaks: %d' % breaks)
 
     import matplotlib.pyplot as plt
 
