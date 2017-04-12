@@ -6,16 +6,14 @@ from shear_lag import ShearLagGUI
 from util import get_files
 
 
+# TODO: This thing reaches into the GUIPage buttons to register a callback. Pages should expose a method instead.
+# TODO: Pages communicate by writing intermediate data to disk. It would be better to avoid disk access until the user wishes to save.
 class TkGUINotebook:
     def __init__(self, image_paths, page_classes):
         """
         A class based on the ttk Notebook which combines GuiPage classes into a single window
         
         The page classes should be in order of their dependencies, with an independent class at index 0.
-        
-        TODO: This thing reaches into the GUIPage buttons to register a callback. Pages should expose a method instead.
-        TODO: Pages communicate by writing intermediate data to disk. It would be better to avoid disk access until
-                the user wishes to save.
 
         Parameters
         ----------

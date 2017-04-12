@@ -72,15 +72,14 @@ class GUIPage:
         Supports the logic for GUIPage widget layout and callback registration, while delegating actual drawing work to
         a Backend instance. Currently hosts a restricted subset of the pyplot API, since matplotlib is our only drawing
         library.
-        
-        TODO: support another drawing tool, such as opencv or pyqtgraph or vispy etc... 
-        
+                
         Parameters
         ----------
         defer_initial_draw : bool
         backend : Backend
         block : bool
         """
+        # TODO: support another drawing tool, such as opencv or pyqtgraph or vispy etc
         self.slider_coord = NotImplementedAttribute()
         self.axes = {}
         self.artists = {}
@@ -339,9 +338,7 @@ class Backend:
         It is best to add the axes before any PyplotBackend Widgets, as it will confuse tight_layout
         
         args and kwargs are passed on to the underlying plotter
-        
-        TODO: automatically layout the axes 
-        
+                
         Parameters
         ----------
         coords : List[float]
