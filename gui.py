@@ -1,6 +1,4 @@
 from collections import OrderedDict
-# import inspect
-from time import perf_counter
 
 from numbers import Integral as Int
 from util import batch
@@ -64,10 +62,6 @@ class GUIPage:
         """
         raise NotImplementedError
 
-    def _validate_name(self,name):
-        if name in self.axes:
-            raise ValueError('Named axes already exist')
-
     def _register_parameter(self, name):
         self._parameter_sliders.append(name)
 
@@ -114,30 +108,15 @@ class GUIPage:
     def full_reload(self, *args, **kwargs):
         if self.dirty or (self.future_pyramids is None) or (self.load_args != self._old_load_args):
             self.future_pyramids = batch(self.load_image_to_pyramid, self.image_paths, *self.load_args,
-                                         return_futures=1)
+                                         return_futures=True)
             self._old_load_args = self.load_args
             self.dirty = False
         self.select_frame()
         self.recalculate_vision()
         self.refresh_plot()
 
-    def register_axes(self, name, coords):
-        """
-        Create axes identified by a name at the specified coordinates (relative to the figure area)
-        
-        TODO: make the backend responsible for laying a grid of axes, and eliminate coords
-        
-        Parameters
-        ----------
-        name : str
-        coords : List[int]
-        """
-        self._validate_name(name)
-        self.axes[name] = self.backend.add_axes(coords, label=name)
-
-    def register_slider(self, name, callback, valmin, valmax, valinit=None, fmt=None, label=None, isparameter=True,
-                        forceint=False):
-        self._validate_name(name)
+    def add_slider(self, name, callback, valmin, valmax, valinit=None, fmt=None, label=None, isparameter=True,
+                   forceint=False):
         if label is None:
             label = name
 
@@ -147,10 +126,8 @@ class GUIPage:
             else:
                 fmt = '%.3g'
 
-        sl = self.sliders[name] = self.backend.make_slider(name, [.3, self.slider_coord, .55, .03],
-                                                           valmin=valmin, valmax=valmax, valinit=valinit, valfmt=fmt,
-                                                           label=label, forceint=forceint)
-        self.slider_coord -= .05
+        sl = self.sliders[name] = self.backend.make_slider(name, valmin=valmin, valmax=valmax, valinit=valinit,
+                                                           valfmt=fmt, label=label, forceint=forceint)
 
         if isparameter:
             self._register_parameter(name)
@@ -163,7 +140,7 @@ class GUIPage:
     def button_value(self, name):
         return self.buttons[name].get()
 
-    def register_button(self, name, callback, coords, **kwargs):
+    def add_button(self, name, callback, **kwargs):
         """
         Plop a button down at the specified coordinates, and register a callback to it
         
@@ -174,16 +151,28 @@ class GUIPage:
         coords : List[float]
         kwargs
         """
-        self._validate_name(name)
-        b = self.buttons[name] = self.backend.make_button(name, coords, **kwargs)
+        b = self.buttons[name] = self.backend.make_button(name, **kwargs)
         b.register(callback)
 
-    def register_radiobuttons(self, name, callback, coords, **kwargs):
-        self._validate_name(name)
-        b = self.buttons[name] = self.backend.make_radiobuttons(name, coords, **kwargs)
+    def add_radiobuttons(self, name, callback, **kwargs):
+        b = self.buttons[name] = self.backend.make_radiobuttons(name, **kwargs)
         b.register(callback)
 
-    # TODO: Punt this copy of pyplot API to the backend
+    # TODO: Elegantly delegate pyplot api to backend instead of wrapping each method
+
+    def add_axes(self, name):
+        """
+        Create axes identified by a name for plotting or showing images
+        
+        Parameters
+        ----------
+        name : str
+        coords : List[int]
+        """
+        self.backend.add_axes(name, label=name)
+
+    # TODO: or create an AxesWrapper to be produced by the backend and managed by GUIPage subclasses?
+
     def draw(self):
         """
         Render all drawings but don't block
@@ -192,25 +181,25 @@ class GUIPage:
         self.backend.draw()
 
     def imshow(self, name, image, **kwargs):
-        self.axes[name].imshow(image, cmap='gray', aspect='auto', **kwargs)
+        self.backend.imshow(name, image, **kwargs)
 
     def plot(self, name, x, y, fmt, **kwargs):
-        self.axes[name].plot(x, y, fmt, **kwargs)
+        self.backend.plot(name, x, y, fmt, **kwargs)
 
     def clear(self, name):
-        self.axes[name].clear()
+        self.backend.clear(name)
 
     def vline(self, name, loc, **kwargs):
-        self.axes[name].axvline(loc, **kwargs)
+        self.backend.vline(name, loc, **kwargs)
 
     def hline(self, name, loc, **kwargs):
-        self.axes[name].axhline(loc, **kwargs)
+        self.backend.hline(name, loc, **kwargs)
 
     def vspan(self, name, a, b, **kwargs):
-        self.axes[name].axvspan(a, b, **kwargs)
+        self.backend.vspan(name, a, b, **kwargs)
 
     def hspan(self, name, a, b, **kwargs):
-        self.axes[name].axhspan(a, b, **kwargs)
+        self.backend.hspan(name, a, b, **kwargs)
 
     @property
     def parameters(self):
@@ -311,6 +300,21 @@ class Backend:
     
     Currently we are assuming that there will be a matplotlib figure available.
     """
+
+    def __init__(self):
+        self.axes = {}
+        self.axeslist = []
+        self.axesrect = (0, 0, 1, 1)
+
+    def make_slider(self, name, valmin, valmax, valinit, valfmt, label, forceint):
+        raise NotImplementedError
+
+    def make_button(self, name, label=None):
+        raise NotImplementedError
+
+    def make_radiobuttons(self, name, labels=None):
+        raise NotImplementedError
+
     def show(self, block):
         """
         Override this method with code to finalize all drawing and optionally block execution on the GUI mainloop
@@ -328,13 +332,15 @@ class Backend:
         """
         self.fig.canvas.draw()
 
-    def add_axes(self, coords, *args, **kwargs):
+    def add_axes(self, name, *args, share=True, **kwargs):
         """
-        Plop some axes down at the specified coordinates.
+        Plop some axes down in a sensible grid.
+        
+        It is best to add the axes before any PyplotBackend Widgets, as it will confuse tight_layout
         
         args and kwargs are passed on to the underlying plotter
         
-        TODO: automatically layout the axes in a sensible grid
+        TODO: automatically layout the axes 
         
         Parameters
         ----------
@@ -347,20 +353,51 @@ class Backend:
         matplotlib.axes.Axes
 
         """
-        return self.fig.add_axes(coords, *args, **kwargs)
+        axes = self.axes
+        if name in axes:
+            raise ValueError('Named axes already exist')
 
-    def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label, forceint):
-        raise NotImplementedError
+        rows = len(axes) + 1
+        ax = None
+        for i, ax in enumerate(self.axeslist):
+            ax.change_geometry(rows, 1, i + 1)
+        ax = axes[name] = self.fig.add_subplot(rows, 1, rows, *args, sharex=(ax if share else None),
+                                               sharey=(ax if share else None), **kwargs)
+        self.axeslist.append(ax)
+        self.fig.tight_layout(rect=self.axesrect)
+        return ax
 
-    def make_button(self, name, coords, label=None):
-        raise NotImplementedError
+    def imshow(self, name, image, **kwargs):
+        self.axes[name].imshow(image, cmap='gray', aspect='auto', **kwargs)
 
-    def make_radiobuttons(self, name, coords, labels=None):
-        raise NotImplementedError
+    def plot(self, name, x, y, fmt, **kwargs):
+        self.axes[name].plot(x, y, fmt, **kwargs)
+
+    def clear(self, name):
+        self.axes[name].clear()
+
+    def vline(self, name, loc, **kwargs):
+        self.axes[name].axvline(loc, **kwargs)
+
+    def hline(self, name, loc, **kwargs):
+        self.axes[name].axhline(loc, **kwargs)
+
+    def vspan(self, name, a, b, **kwargs):
+        self.axes[name].axvspan(a, b, **kwargs)
+
+    def hspan(self, name, a, b, **kwargs):
+        self.axes[name].axhspan(a, b, **kwargs)
 
 
 class PyplotBackend(Backend):
+
     def __init__(self, size=(8, 10)):
+        super().__init__()
+        self.slider_coord = .3
+        self.button_coord = .95
+        self.radio_coord = .89
+        self.axesrect = (0, .35, 1, .9)
+        self.slider_axes = {}
         import matplotlib.pyplot as plt
         self.plt = plt
         self.fig = self.plt.figure(figsize=size)
@@ -373,27 +410,30 @@ class PyplotBackend(Backend):
 
         self.plt.show()
 
-    def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label, forceint):
-        ax = self.add_axes(coords, label=name)
+    def make_slider(self, name, valmin, valmax, valinit, valfmt, label, forceint):
+        ax = self.fig.add_axes([.3, self.slider_coord, .55, .03], label=name)
+        self.slider_coord -= .05
 
         sl = self.plt.Slider(ax, label, valmin, valmax, valinit, valfmt)
 
         return MPLWidgetWrapper(sl, forceint=forceint)
 
-    def make_button(self, name, coords, label=None):
+    def make_button(self, name, label=None):
         if label is None:
             label = name
-        ax = self.add_axes(coords, label=name)
+        ax = self.fig.add_axes([.35, self.button_coord, .15, .03], label=name)
+        self.button_coord -= .05
         return MPLWidgetWrapper(self.plt.Button(ax, label))
 
-    def make_radiobuttons(self, name, coords, labels=None):
+    def make_radiobuttons(self, name, labels=None):
         from matplotlib.widgets import RadioButtons
-        ax = self.add_axes(coords, label=name)
+        ax = self.fig.add_axes([.6, self.radio_coord, .15, .1], label=name)
+        self.radio_coord -= (.1 * 5 / 3)
         return MPLWidgetWrapper(RadioButtons(ax, labels))
 
 
 class TkBackend(Backend):
-    def __init__(self, size=(5, 5), master=None):
+    def __init__(self, size=(8, 8), master=None):
         """
         A concrete Backend class based on Tk and ttk widgets. It can be embedded in some other Tk master frame, 
         otherwise it will generate it's own root window.
@@ -404,6 +444,7 @@ class TkBackend(Backend):
         master : tkinter.ttk.Frame
 
         """
+        super().__init__()
         self._radiobuttons = {}
         self._scales = {}
         self._labels = {}
@@ -429,7 +470,7 @@ class TkBackend(Backend):
         if block:
             self.master.mainloop()
 
-    def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label, forceint):
+    def make_slider(self, name, valmin, valmax, valinit, valfmt, label, forceint):
         from tkinter import IntVar, DoubleVar, StringVar
         from tkinter.ttk import Label, Scale, Frame
         if self.slider_frame is None:
@@ -461,7 +502,7 @@ class TkBackend(Backend):
         frame.pack()
         return TkWidgetWrapper(s, forceint)
 
-    def make_button(self, name, coords, label=None):
+    def make_button(self, name, label=None):
         from tkinter import Button
         if label is None:
             label = name
@@ -469,7 +510,7 @@ class TkBackend(Backend):
         b.pack()
         return TkWidgetWrapper(b)
 
-    def make_radiobuttons(self, name, coords, labels=None):
+    def make_radiobuttons(self, name, labels=None):
         from tkinter import StringVar
         from tkinter.ttk import Radiobutton, Frame
         v = StringVar(self.master)

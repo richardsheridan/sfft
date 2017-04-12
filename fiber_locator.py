@@ -29,20 +29,19 @@ class FiberGUI(GUIPage):
         return 'FiberGUI'
 
     def create_layout(self):
-        self.register_axes('image', [.1, .3, .8, .55])
+        self.add_axes('image')
 
-        self.register_button('save', self.execute_batch, [.3, .92, .2, .05], label='Save batch')
-        self.register_radiobuttons('display_type', self.set_display_type, [.6, .9, .15, .1],
-                                   labels=('original', 'filtered', 'edges', 'rotated'))
+        self.add_button('save', self.execute_batch, label='Save batch')
+        self.add_radiobuttons('display_type', self.set_display_type,
+                              labels=('original', 'filtered', 'edges', 'rotated'))
 
-        self.slider_coord = .2
-        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
-                             valinit=0,
-                             label='Frame number', isparameter=False, forceint=True)
-        self.register_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
-                             label='edge threshold')
-        self.register_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=0, label='Pyramid Level',
-                             forceint=True)
+        self.add_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
+                        valinit=0,
+                        label='Frame number', isparameter=False, forceint=True)
+        self.add_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
+                        label='edge threshold')
+        self.add_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=0, label='Pyramid Level',
+                        forceint=True)
         # self.register_slider('ksize', self.update_edge,
         #                      forceint=True,
         #                      label='Kernel size',

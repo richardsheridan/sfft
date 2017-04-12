@@ -22,21 +22,19 @@ class FidGUI(GUIPage):
         return 'FidGUI'
 
     def create_layout(self):
-        self.register_axes('image', [.1, .65, .8, .3])
-        self.register_axes('profile', [.1, .3, .8, .3])
+        self.add_axes('image')
+        self.add_axes('profile')
 
-        self.register_button('save',self.execute_batch,[.4, .95, .2, .03], label='Save batch')
+        self.add_button('save', self.execute_batch, label='Save batch')
 
-        self.slider_coord = .20
-
-        self.register_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
-                             valinit=0,
-                             label='Frame Number', isparameter=False, forceint=True)
-        self.register_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=4, label='Pyramid Level',
-                             forceint=True)
-        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=.035, valinit=.009,
-                             label='Filter Width')
-        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=60, valinit=30, label='Amplitude Cutoff')
+        self.add_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
+                        valinit=0,
+                        label='Frame Number', isparameter=False, forceint=True)
+        self.add_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=4, label='Pyramid Level',
+                        forceint=True)
+        self.add_slider('filter_width', self.update_filter_width, valmin=0, valmax=.035, valinit=.009,
+                        label='Filter Width')
+        self.add_slider('cutoff', self.update_cutoff, valmin=0, valmax=60, valinit=30, label='Amplitude Cutoff')
 
     @staticmethod
     def load_image_to_pyramid(image_path, stabilize_args):

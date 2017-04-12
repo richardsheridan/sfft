@@ -36,17 +36,14 @@ class ShearLagGUI(GUIPage):
         return 'ShearLagGUI'
 
     def create_layout(self):
-        self.register_button('save', self.execute_batch, [.3, .95, .2, .03], label='Save results')
+        self.add_axes('n_breaks')
+        self.add_axes('l_frags')
+        self.add_axes('stress_strain')
+        self.add_button('save', self.execute_batch, label='Save results')
 
-        self.slider_coord = .3
-
-        self.register_slider('k', self.update_p_level, valmin=0.5, valmax=0.8, valinit=.667, label='K')
-        self.register_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=2,
-                             label='Filter Width')
-        self.register_slider('mask_width', self.update_mask, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
-        self.register_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
-        self.register_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
-                             label='Neighborhood', forceint=True)
+        self.add_slider('k', self.update_k, valmin=0.5, valmax=0.8, valinit=.667, label='K')
+        self.add_slider('fiber_modulus', self.update_fiber_modulus, valmin=70, valmax=90, valinit=80,
+                        label='Fiber Modulus')
 
     @staticmethod
     def load_image_to_pyramid(*args):
@@ -69,6 +66,12 @@ class ShearLagGUI(GUIPage):
         save_shear_lag(parameters, folder, result)
 
     def update_frame_number(self, *a, **kw):
+        pass
+
+    def update_k(self, *a, **kw):
+        pass
+
+    def update_fiber_modulus(self, *a, **kw):
         pass
 
 
