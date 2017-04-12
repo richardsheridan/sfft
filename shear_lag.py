@@ -53,7 +53,7 @@ class ShearLagGUI(GUIPage):
                         label='Fiber Modulus')
         self.add_slider('fiber_radius', self.update, valmin=2, valmax=10, valinit=6,
                         label='Fiber Radius')
-        self.add_slider('fiber_eps', self.update, valmin=-.05, valmax=.05, valinit=0, fmt='%.03f',
+        self.add_slider('fiber_eps', self.update, valmin=-.05, valmax=.05, valinit=0, valfmt='%.03f',
                         label='Fiber Pre-extension')
         self.add_axes('n_breaks', share='x')
         self.add_axes('l_frags', share='x')

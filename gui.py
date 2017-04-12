@@ -115,19 +115,19 @@ class GUIPage:
         self.recalculate_vision()
         self.refresh_plot()
 
-    def add_slider(self, name, callback, valmin, valmax, valinit=None, fmt=None, label=None, isparameter=True,
+    def add_slider(self, name, callback, valmin, valmax, valinit=None, valfmt=None, label=None, isparameter=True,
                    forceint=False):
         if label is None:
             label = name
 
-        if fmt is None:
+        if valfmt is None:
             if forceint:
-                fmt = '%d'
+                valfmt = '%d'
             else:
-                fmt = '%.3g'
+                valfmt = '%.3g'
 
         sl = self.sliders[name] = self.backend.make_slider(name, valmin=valmin, valmax=valmax, valinit=valinit,
-                                                           valfmt=fmt, label=label, forceint=forceint)
+                                                           valfmt=valfmt, label=label, forceint=forceint)
 
         if isparameter:
             self._register_parameter(name)
