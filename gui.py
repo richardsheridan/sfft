@@ -433,7 +433,7 @@ class PyplotBackend(Backend):
 
 
 class TkBackend(Backend):
-    def __init__(self, size=(8, 8), master=None):
+    def __init__(self, size=(8, 7), master=None):
         """
         A concrete Backend class based on Tk and ttk widgets. It can be embedded in some other Tk master frame, 
         otherwise it will generate it's own root window.
@@ -450,7 +450,7 @@ class TkBackend(Backend):
         self._labels = {}
         self.slider_frame = None
         self.slider_row = 0
-        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
         from matplotlib.figure import Figure
         if master is None:
             from tkinter import Tk
@@ -459,6 +459,8 @@ class TkBackend(Backend):
         self.master = master
         self.fig = Figure(figsize=size)
         self.canvas = FigureCanvasTkAgg(self.fig, master=master)
+        self._toolbar = NavigationToolbar2TkAgg(self.canvas, master)
+        self._toolbar.pack(side='top')
         self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
 
     def on_closing(self):
