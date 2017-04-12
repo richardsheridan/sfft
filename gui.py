@@ -32,10 +32,10 @@ class GUIPage:
     @staticmethod
     def load_image_to_pyramid(image_path, *load_args):
         """
-        return an image pyramid from a simple image path
+        Override this method with code that returns an image pyramid from a simple image path
 
         load_args is splatted from self.load_args, but this method must be a staticmethod so that
-        it can be pickled for the processpoolexecutor
+        it can be pickled for the processpoolexecutor, so we can't access self directly.
 
         Parameters
         ----------
@@ -45,12 +45,23 @@ class GUIPage:
         raise NotImplementedError
 
     def create_layout(self):
+        """
+        Override this method with code to generate all plots and widgets you may wish to use. Do not assume any data
+        are available
+        """
         raise NotImplementedError
 
     def recalculate_vision(self):
+        """
+        Override this method with code to do all intensive calculations to create intermediate images and results.
+        Assume pyramid is loaded properly for the selected frame.
+        """
         raise NotImplementedError
 
     def refresh_plot(self):
+        """
+        Override this method with code to plot the state of the system. assume recalculate_vision has been called.
+        """
         raise NotImplementedError
 
     def _validate_name(self,name):
@@ -61,7 +72,21 @@ class GUIPage:
         self._parameter_sliders.append(name)
 
     def __init__(self, block=True, backend=None, defer_initial_draw=False):
-
+        """
+        Abstract base class for GUIPages. 
+        
+        Supports the logic for GUIPage widget layout and callback registration, while delegating actual drawing work to
+        a Backend instance. Currently hosts a restricted subset of the pyplot API, since matplotlib is our only drawing
+        library.
+        
+        TODO: support another drawing tool, such as opencv or pyqtgraph or vispy etc... 
+        
+        Parameters
+        ----------
+        defer_initial_draw : bool
+        backend : Backend
+        block : bool
+        """
         self.slider_coord = NotImplementedAttribute()
         self.axes = {}
         self.artists = {}
@@ -97,6 +122,16 @@ class GUIPage:
         self.refresh_plot()
 
     def register_axes(self, name, coords):
+        """
+        Create axes identified by a name at the specified coordinates (relative to the figure area)
+        
+        TODO: make the backend responsible for laying a grid of axes, and eliminate coords
+        
+        Parameters
+        ----------
+        name : str
+        coords : List[int]
+        """
         self._validate_name(name)
         self.axes[name] = self.backend.add_axes(coords, label=name)
 
@@ -129,6 +164,16 @@ class GUIPage:
         return self.buttons[name].get()
 
     def register_button(self, name, callback, coords, **kwargs):
+        """
+        Plop a button down at the specified coordinates, and register a callback to it
+        
+        Parameters
+        ----------
+        name : str
+        callback : function or method
+        coords : List[float]
+        kwargs
+        """
         self._validate_name(name)
         b = self.buttons[name] = self.backend.make_button(name, coords, **kwargs)
         b.register(callback)
@@ -140,6 +185,10 @@ class GUIPage:
 
     # TODO: Punt this copy of pyplot API to the backend
     def draw(self):
+        """
+        Render all drawings but don't block
+
+        """
         self.backend.draw()
 
     def imshow(self, name, image, **kwargs):
@@ -257,13 +306,47 @@ class TkRbConsolidator:
 
 
 class Backend:
+    """
+    Abstract base class for plotting backend wrappers.
+    
+    Currently we are assuming that there will be a matplotlib figure available.
+    """
     def show(self, block):
+        """
+        Override this method with code to finalize all drawing and optionally block execution on the GUI mainloop
+
+        Parameters
+        ----------
+        block : bool
+        """
         raise NotImplementedError
 
     def draw(self):
+        """
+        Render all drawings but don't block
+
+        """
         self.fig.canvas.draw()
 
     def add_axes(self, coords, *args, **kwargs):
+        """
+        Plop some axes down at the specified coordinates.
+        
+        args and kwargs are passed on to the underlying plotter
+        
+        TODO: automatically layout the axes in a sensible grid
+        
+        Parameters
+        ----------
+        coords : List[float]
+        args
+        kwargs
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+
+        """
         return self.fig.add_axes(coords, *args, **kwargs)
 
     def make_slider(self, name, coords, valmin, valmax, valinit, valfmt, label, forceint):
@@ -311,6 +394,16 @@ class PyplotBackend(Backend):
 
 class TkBackend(Backend):
     def __init__(self, size=(5, 5), master=None):
+        """
+        A concrete Backend class based on Tk and ttk widgets. It can be embedded in some other Tk master frame, 
+        otherwise it will generate it's own root window.
+        
+        Parameters
+        ----------
+        size : Tuple[int, int]
+        master : tkinter.ttk.Frame
+
+        """
         self._radiobuttons = {}
         self._scales = {}
         self._labels = {}

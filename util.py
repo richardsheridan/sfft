@@ -84,6 +84,10 @@ def batch(func, image_paths, *args, return_futures=False):
 def get_files():
     """
     Open a dialog and return a set of files to parse.
+
+    Returns
+    -------
+    List[str]
     """
     # we don't want a full GUI, so keep the root window from appearing
     tk = Tk()

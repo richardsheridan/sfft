@@ -51,6 +51,13 @@ def arg_min_max(image_array, return_values=False):
 
 
 def sobel_filter(image_array, dx, dy, ksize=1):
+    """
+
+    Parameters
+    ----------
+    dx : int
+    image_array : numpy.ndarray
+    """
     return cv2.Sobel(image_array, cv2.CV_32F, dx, dy, ksize=ksize,
                      scale=2 ** -(ksize * 2 - 0 - 1 - 2) if ksize > 1 else 1)
 

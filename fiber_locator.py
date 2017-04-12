@@ -10,6 +10,16 @@ STABILIZE_FILENAME = 'stabilize.json'
 
 class FiberGUI(GUIPage):
     def __init__(self, image_paths, **kw):
+        """
+        A concrete GUIPage for finding and stabilizing the fiber position.
+        
+        Has no dependencies on other GUIPage results.
+        
+        Parameters
+        ----------
+        image_paths : List[str]
+        kw
+        """
         self.image_paths = image_paths
         self.display_type = 'original'
 
