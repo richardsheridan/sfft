@@ -160,7 +160,7 @@ class GUIPage:
 
     # TODO: Elegantly delegate pyplot api to backend instead of wrapping each method
 
-    def add_axes(self, name):
+    def add_axes(self, name, **kwargs):
         """
         Create axes identified by a name for plotting or showing images
         
@@ -169,7 +169,7 @@ class GUIPage:
         name : str
         coords : List[int]
         """
-        self.backend.add_axes(name, label=name)
+        self.backend.add_axes(name, label=name, **kwargs)
 
     # TODO: or create an AxesWrapper to be produced by the backend and managed by GUIPage subclasses?
 
@@ -332,7 +332,7 @@ class Backend:
         """
         self.fig.canvas.draw()
 
-    def add_axes(self, name, *args, share=True, **kwargs):
+    def add_axes(self, name, *args, share='xy', **kwargs):
         """
         Plop some axes down in a sensible grid.
         
@@ -361,17 +361,22 @@ class Backend:
         ax = None
         for i, ax in enumerate(self.axeslist):
             ax.change_geometry(rows, 1, i + 1)
-        ax = axes[name] = self.fig.add_subplot(rows, 1, rows, *args, sharex=(ax if share else None),
-                                               sharey=(ax if share else None), **kwargs)
+        ax = axes[name] = self.fig.add_subplot(rows, 1, rows, *args, sharex=(ax if 'x' in share else None),
+                                               sharey=(ax if 'y' in share else None), **kwargs)
         self.axeslist.append(ax)
-        self.fig.tight_layout(rect=self.axesrect)
+        self.fig.tight_layout(rect=self.axesrect, pad=2.0)
         return ax
 
     def imshow(self, name, image, **kwargs):
         self.axes[name].imshow(image, cmap='gray', aspect='auto', **kwargs)
 
     def plot(self, name, x, y, fmt, **kwargs):
-        self.axes[name].plot(x, y, fmt, **kwargs)
+        ylim = kwargs.pop('ylim', None)
+        xlim = kwargs.pop('xlim', None)
+        ax = self.axes[name]
+        ax.plot(x, y, fmt, **kwargs)
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
 
     def clear(self, name):
         self.axes[name].clear()
@@ -494,12 +499,12 @@ class TkBackend(Backend):
 
         v.trace_variable('w', label_callback)
 
-        nl = self._labels[name + 'num'] = Label(frame, textvariable=num_sv, width=5, justify='right')
-        tl = self._labels[name + 'text'] = Label(frame, text=label if label is not None else name, )
+        nl = self._labels[name + 'num'] = Label(frame, textvariable=num_sv, width=6, anchor='e')
+        tl = self._labels[name + 'text'] = Label(frame, text=label if label is not None else name, anchor='w')
         v.set(valinit)
-        nl.grid(column=0, row=self.slider_row)
+        nl.grid(column=0, row=self.slider_row, sticky='e')
         s.grid(column=1, row=self.slider_row)
-        tl.grid(column=2, row=self.slider_row)
+        tl.grid(column=2, row=self.slider_row, sticky='w')
         self.slider_row += 1
         frame.pack()
         return TkWidgetWrapper(s, forceint)

@@ -27,7 +27,17 @@ radius_dict = {'pristine': 5.78,
 
 class ShearLagGUI(GUIPage):
     def __init__(self, image_paths, stabilize_args=(), fid_args=(), break_args=(), **kw):
+        # image_paths may be a folder in this gui..
+        try:
+            if path.isdir(image_paths):
+                folder = image_paths
+            else:
+                folder = path.dirname(image_paths)
+            image_paths = [path.join(folder, 'nothing.file')]
+        except TypeError:
+            folder = path.dirname(image_paths[0])
         self.image_paths = image_paths
+        self.folder = folder
         self.load_args = (stabilize_args, fid_args, break_args)
 
         super().__init__(**kw)
@@ -36,43 +46,73 @@ class ShearLagGUI(GUIPage):
         return 'ShearLagGUI'
 
     def create_layout(self):
-        self.add_axes('n_breaks')
-        self.add_axes('l_frags')
-        self.add_axes('stress_strain')
         self.add_button('save', self.execute_batch, label='Save results')
 
-        self.add_slider('k', self.update_k, valmin=0.5, valmax=0.8, valinit=.667, label='K')
-        self.add_slider('fiber_modulus', self.update_fiber_modulus, valmin=70, valmax=90, valinit=80,
+        self.add_slider('K', self.update, valmin=0.5, valmax=0.8, valinit=.667, label='K')
+        self.add_slider('fiber_modulus', self.update, valmin=70, valmax=90, valinit=80,
                         label='Fiber Modulus')
+        self.add_slider('fiber_radius', self.update, valmin=2, valmax=10, valinit=6,
+                        label='Fiber Radius')
+        self.add_slider('fiber_eps', self.update, valmin=-.05, valmax=.05, valinit=0, fmt='%.03f',
+                        label='Fiber Pre-extension')
+        self.add_axes('n_breaks', share='x')
+        self.add_axes('l_frags', share='x')
+        self.add_axes('stress_strain', share='')
 
     @staticmethod
     def load_image_to_pyramid(*args):
         pass
 
     def select_frame(self):
-        pass
+        self.dataset = load_dataset(self.folder)
 
     def recalculate_vision(self):
-        pass
+        self.result = calc_shear_lag(self.dataset,
+                                     K=self.slider_value('K'),
+                                     fiber_modulus=self.slider_value('fiber_modulus'),
+                                     fiber_radius=self.slider_value('fiber_radius'),
+                                     fiber_eps=self.slider_value('fiber_eps'),
+                                     )
 
     def refresh_plot(self):
-        pass
+        e = self.slider_value('fiber_eps')
+        self.clear('n_breaks')
+        self.clear('l_frags')
+        self.clear('stress_strain')
+        self.plot('n_breaks', (self.dataset.strains + e) * 100, self.dataset.break_count, 'b')
+        # axs[0].set_ylabel('Num. Breaks')
+        self.plot('l_frags', (self.dataset.strains + e) * 100, self.dataset.avg_frag_len, 'b', ylim=[0, 2500])
+        # axs[1].axis(ymax=max(1000, critical_length * 2.25), ymin=0)
+        # axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
+        self.plot('stress_strain', self.dataset.strains * 100, self.dataset.matrix_stress, 'b')
+        # axs[2].set_ylabel('Matrix Stress (MPa)')
+        # axs[2].set_xlabel('Matrix strain (%)')
+        self.hline('l_frags', (2 * self.result.critical_length), linestyle=':')
+        self.vline('n_breaks', self.result.strain_at_l_c * 100, linestyle=':')
+        self.vline('l_frags', self.result.strain_at_l_c * 100, linestyle=':')
+        self.vline('stress_strain', (self.result.strain_at_l_c - e) * 100, linestyle=':')
+        self.draw()
+
+        # TODO: make a text box widget to hold this
+        print('l_c: %.3g um' % self.result.critical_length)
+        print('KT IFSS: %.3g MPa' % self.result.ifss_kt)
+        print('COX IFSS: %.3g MPa' % self.result.ifss_cox)
+        print('strain at l_c:  %.3g %%' % (self.result.strain_at_l_c * 100))
+        print('stress at l_c:  %.3g GPa' % (self.result.stress_at_l_c / 1000))
+        print('Breaks: %d' % self.result.breaks)
 
     def execute_batch(self, *a, **kw):
         parameters = self.parameters
-        folder = path.dirname(self.image_paths[0])
-        dataset = load_dataset(folder)
-        result = calc_shear_lag(dataset, *parameters.values())
-        save_shear_lag(parameters, folder, result)
+        dataset = load_dataset(self.folder)
+        result = calc_shear_lag(dataset, **parameters)
+        save_shear_lag(parameters, self.folder, result)
 
     def update_frame_number(self, *a, **kw):
         pass
 
-    def update_k(self, *a, **kw):
-        pass
-
-    def update_fiber_modulus(self, *a, **kw):
-        pass
+    def update(self, *a, **kw):
+        self.recalculate_vision()
+        self.refresh_plot()
 
 
 def choose_dataset():
@@ -162,20 +202,23 @@ Result = namedtuple('Result',
                     'saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks')
 
 
-def calc_shear_lag(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_poisson=None):
-    break_count, avg_frag_len, strains, matrix_stress, label = dataset
+def calc_shear_lag(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_eps=0, fiber_poisson=None):
+    break_count, avg_frag_len, matrix_strains, matrix_stress, label = dataset
+    fiber_strains = matrix_strains + fiber_eps
+    # strain_at_1st_break =  interpolate(1, break_count, fiber_strains)
     if fiber_radius is None:
         fiber_radius = radius_dict[label]
     matrix_radius = 12 * fiber_radius
     saturation_aspect_ratio = avg_frag_len[-1] / (2 * fiber_radius)
     critical_length = avg_frag_len[-1] / K
-    strain_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, strains)
+    strain_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, fiber_strains)
 
     with np.errstate(divide='ignore'):
-        matrix_modulus = interpolate(2.0 * critical_length, avg_frag_len, matrix_stress / strains)  # secant modulus
+        matrix_modulus = interpolate(2.0 * critical_length, avg_frag_len,
+                                     matrix_stress / matrix_strains)  # secant modulus
     matrix_poisson = 0.5
     fiber_modulus *= 1000
-    fiber_stress = calc_fiber_stress(strains, fiber_modulus, fiber_poisson, matrix_modulus, matrix_poisson)
+    fiber_stress = calc_fiber_stress(fiber_strains, fiber_modulus, fiber_poisson, matrix_modulus, matrix_poisson)
 
     stress_at_l_c = interpolate(2.0 * critical_length, avg_frag_len, fiber_stress)  # factor of 2 accounts for shear lag
     f_kt = kt_multiplier(critical_length)
@@ -214,40 +257,40 @@ def load_shear_lag(folder):
 
 if __name__ == '__main__':
     folder = choose_dataset()
-    Tk().withdraw()
-    if askyesno('Re-analyze images?', 'Re-analyze images?'):
-        images = get_files()
-        FiberGUI(images)
-        FidGUI(images)
-        BreakGUI(images)
-        folder = path.dirname(images[0])
-    print(path.basename(folder))
-
-    break_count, avg_frag_len, strains, matrix_stress, label = dataset = load_dataset(folder)
-    saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks = \
-        calc_shear_lag(dataset, fiber_modulus=80, K=.668)
-
-    print('l_c: %.3g um' % critical_length)
-    print('KT IFSS: %.3g MPa' % ifss_kt)
-    print('COX IFSS: %.3g MPa' % ifss_cox)
-    print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
-    print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
-    print('Breaks: %d' % breaks)
-
-    import matplotlib.pyplot as plt
-
-    fig, axs = plt.subplots(3, 1, 'col')
-    axs[0].plot(strains*100, break_count)
-    axs[0].set_ylabel('Num. Breaks')
-    axs[1].plot(strains*100, avg_frag_len)
-    axs[1].axis(ymax=max(1000,critical_length*2.25),ymin=0)
-    axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
-    axs[2].plot(strains*100, matrix_stress)
-    axs[2].set_ylabel('Matrix Stress (MPa)')
-    axs[2].set_xlabel('Matrix strain (%)')
-    axs[1].axhline((2 * critical_length), linestyle=':')
-    axs[0].axvline(strain_at_l_c*100, linestyle=':')
-    axs[1].axvline(strain_at_l_c*100, linestyle=':')
-    axs[2].axvline(strain_at_l_c*100, linestyle=':')
-
-    plt.show(1)
+    ShearLagGUI(folder)
+    # if askyesno('Re-analyze images?', 'Re-analyze images?'):
+    #     images = get_files()
+    #     FiberGUI(images)
+    #     FidGUI(images)
+    #     BreakGUI(images)
+    #     folder = path.dirname(images[0])
+    # print(path.basename(folder))
+    #
+    # break_count, avg_frag_len, strains, matrix_stress, label = dataset = load_dataset(folder)
+    # saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks = \
+    #     calc_shear_lag(dataset, fiber_modulus=80, K=.668)
+    #
+    # print('l_c: %.3g um' % critical_length)
+    # print('KT IFSS: %.3g MPa' % ifss_kt)
+    # print('COX IFSS: %.3g MPa' % ifss_cox)
+    # print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
+    # print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
+    # print('Breaks: %d' % breaks)
+    #
+    # import matplotlib.pyplot as plt
+    #
+    # fig, axs = plt.subplots(3, 1, 'col')
+    # axs[0].plot(strains*100, break_count)
+    # axs[0].set_ylabel('Num. Breaks')
+    # axs[1].plot(strains*100, avg_frag_len)
+    # axs[1].axis(ymax=max(1000,critical_length*2.25),ymin=0)
+    # axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
+    # axs[2].plot(strains*100, matrix_stress)
+    # axs[2].set_ylabel('Matrix Stress (MPa)')
+    # axs[2].set_xlabel('Matrix strain (%)')
+    # axs[1].axhline((2 * critical_length), linestyle=':')
+    # axs[0].axvline(strain_at_l_c*100, linestyle=':')
+    # axs[1].axvline(strain_at_l_c*100, linestyle=':')
+    # axs[2].axvline(strain_at_l_c*100, linestyle=':')
+    #
+    # plt.show(1)

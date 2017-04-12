@@ -23,7 +23,7 @@ class FidGUI(GUIPage):
 
     def create_layout(self):
         self.add_axes('image')
-        self.add_axes('profile')
+        self.add_axes('profile', share='x')
 
         self.add_button('save', self.execute_batch, label='Save batch')
 

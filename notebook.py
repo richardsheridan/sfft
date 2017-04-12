@@ -2,6 +2,7 @@ from fiber_locator import FiberGUI
 from fiducial_locator import FidGUI
 from break_locator import BreakGUI
 from gui import TkBackend
+from shear_lag import ShearLagGUI
 from util import get_files
 
 
@@ -91,5 +92,5 @@ class TkGUINotebook:
 
 if __name__ == '__main__':
     image_paths = get_files()
-    pages = [FiberGUI, FidGUI, BreakGUI]
+    pages = [FiberGUI, FidGUI, BreakGUI, ShearLagGUI]
     a = TkGUINotebook(image_paths, pages)
