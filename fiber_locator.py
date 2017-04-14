@@ -1,7 +1,7 @@
 from os import path
 
-from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_tdi_aspect, fit_line_moments, \
-    rotate_fiber, imwrite, imread, binary_threshold
+from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_tdi_aspect, fit_line, \
+    rotate_fiber, imwrite, imread, binary_threshold, clipped_line_points
 from gui import GUIPage
 from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
@@ -88,16 +88,16 @@ class FiberGUI(GUIPage):
         if label == 'original':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
-            image = draw_line(image, self.slope, self.intercept*image.shape[0], 0)
+            # image = draw_line(image, self.slope, self.intercept*image.shape[0], 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
 
-            image = draw_line(image, self.slope, self.intercept*image.shape[0], float(image.max()))
+            # image = draw_line(image, self.slope, self.intercept*image.shape[0], float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-            image = draw_line(image, self.slope, self.intercept*image.shape[0], 255)
+            # image = draw_line(image, self.slope, self.intercept*image.shape[0], 255)
         elif label == 'rotated':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
@@ -109,6 +109,8 @@ class FiberGUI(GUIPage):
         self.display_image_array = image  # .astype('uint8')
         # image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
         self.imshow('image', image)
+        if label != 'rotated':
+            self.plot('image', *clipped_line_points(image, self.slope, self.intercept), 'r-.')
         # TODO: draw line using matplotlib overlay
         self.draw()
 
@@ -168,7 +170,7 @@ def stabilize_file(image_path, threshold, p_level, return_image=False, save_imag
     pyramid = make_pyramid(image, p_level)
     edgeimage = sobel_filter(pyramid[p_level], 0, 1)
     edgeimage = binary_threshold(edgeimage, threshold)
-    slope, intercept, theta = fit_line_moments(edgeimage)
+    slope, intercept, theta = fit_line(edgeimage)
     vshift = vshift_from_si_shape(slope, intercept, image.shape)
     if return_image or save_image:
         image = rotate_fiber(image, vshift, theta, overwrite=True)
@@ -208,5 +210,5 @@ if __name__ == '__main__':
     # print(a.sliders['threshold'].val)
     #
     # from cProfile import run
-    #
+    # run('batch(stabilize_file, image_paths,100, 0)', sort='time', )
     # run('batch(stabilize_file, image_paths,*a.parameters.values())', sort='time', )

@@ -136,6 +136,15 @@ def max_filter(image, neighborhood=1, elliptical=True):
     return cv2.dilate(image, footprint, borderType=cv2.BORDER_REPLICATE)
 
 
+def clipped_line_points(image, slope, intercept):
+    y, x = image.shape
+    intercept = int(intercept * (y - 1))
+    pt1 = (0, intercept)
+    pt2 = (x, int(slope * x) + intercept)
+    visible, pt1, pt2 = cv2.clipLine((0, 0, x, y), pt1, pt2)
+    xval, yval = tuple(zip(pt1, pt2))
+    return xval, yval
+
 def draw_line(image_array, slope, intercept, color=255, thickness=2, overwrite=False):
     image_array = np.array(image_array, copy=not overwrite)
     x_size = image_array.shape[1]
