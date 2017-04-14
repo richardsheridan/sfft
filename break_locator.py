@@ -162,8 +162,7 @@ def save_breaks(parameters, breaks, images):
 
     headers = dict(parameters)
     headers['fields'] = 'name: [locations, relative_locations,fiducial_break_count]'
-    data = {fname: (locations, relative_locations, fiducial_break_count) for
-            fname, (locations, relative_locations, fiducial_break_count) in zip(fnames, breaks)}
+    data = dict(zip(fnames, breaks))
     output = [headers, data]
 
     print('Saving parameters and locations to:')
@@ -183,14 +182,13 @@ def load_breaks(directory, output=None):
 
     if output is None:
         return header, data
-    elif output is 'absolute':
-        return [(name, data[name][0]) for name in sorted(data)]
-    elif output is 'relative':
-        return [(name, data[name][1]) for name in sorted(data)]
-    elif output == 'count':
-        return [(name, data[name][2]) for name in sorted(data)]
-    else:
-        raise ValueError('Unknown output option: ()'.format(output))
+
+    i = {'absolute': 0,
+         'relative': 1,
+         'count': 2,
+         }.get(output, output)
+
+    return [(name, data[name][i]) for name in sorted(data)]
 
 
 if __name__ == '__main__':
