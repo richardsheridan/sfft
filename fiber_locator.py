@@ -76,7 +76,7 @@ class FiberGUI(GUIPage):
     def recalculate_lines(self):
         processed_image_array = self.edges
 
-        self.slope, self.intercept, self.theta = fit_line_moments(processed_image_array)
+        self.slope, self.intercept, self.theta = fit_line(processed_image_array)
 
         # slope, intercept, theta = fit_line_fitline(processed_image_array)
 

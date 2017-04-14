@@ -119,6 +119,7 @@ def make_dog(image, sigma_wide, sigma_narrow):
     image /= cv2.norm(image) / np.sqrt(image.size)
     return image
 
+
 def make_log(image, sigma):
     image = np.float32(image)
     if sigma > 0:
@@ -126,6 +127,7 @@ def make_log(image, sigma):
     image = cv2.Laplacian(image, cv2.CV_32F, borderType=cv2.BORDER_REPLICATE)
     image /= cv2.norm(image) / np.sqrt(image.size)
     return image
+
 
 def max_filter(image, neighborhood=1, elliptical=True):
     if elliptical:
@@ -144,6 +146,7 @@ def clipped_line_points(image, slope, intercept):
     visible, pt1, pt2 = cv2.clipLine((0, 0, x, y), pt1, pt2)
     xval, yval = tuple(zip(pt1, pt2))
     return xval, yval
+
 
 def draw_line(image_array, slope, intercept, color=255, thickness=2, overwrite=False):
     image_array = np.array(image_array, copy=not overwrite)
@@ -202,16 +205,22 @@ def correct_tdi_aspect(tdi_array):
     return tdi_array
 
 
-def fit_line_fitline(processed_image_array):
+def fit_line(processed_image_array):
     """
     cv2.fitLine internally uses moments, but may iteratively reweight them for robust fit based on DIST_
     but points must be extracted manually
 
-    :param processed_image_array:
-    :return slope, intercept, theta:
+    Parameters
+    ----------
+    processed_image_array : np.ndarray
+
+    Returns
+    -------
+    slope, intercept, theta: tuple
+
     """
-    points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
-    # points = cv2.findNonZero(processed_image_array) # TODO: is this equivalent?
+    # points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
+    points = argwhere(processed_image_array)[:, ::-1]  # converts to uint8 internally. worth it!
     line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
     centroid = line[2:]
     theta = np.arctan2(line[1], line[0])
@@ -224,8 +233,13 @@ def fit_line_moments(processed_image_array):
     Use moments to generate whole-image centroid and angle
     works with grayscale data
 
-    :param processed_image_array:
-    :return slope, intercept, theta:
+    Parameters
+    ----------
+    processed_image_array : np.ndarray
+
+    Returns
+    -------
+    slope, intercept, theta: tuple
     """
 
     moments = cv2.moments(processed_image_array, True)
