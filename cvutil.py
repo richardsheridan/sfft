@@ -9,6 +9,8 @@ def argwhere(array):
     """ Return something that iterates over (r,c) indices of nonzero pixels
 
     Same as np.argwhere but returns int32
+    
+    Assumes a 2D, single channel image array!
 
     >>> import numpy as np, cvutil
     >>> a = np.bool8([[0,1,0],[0,0,1]])
@@ -24,9 +26,14 @@ def argwhere(array):
     [0 1]
     >>>
 
+    Parameters
+    ----------
+    array : numpy.ndarray
 
-    :param array:
-    :return:
+    Returns
+    -------
+    numpy.ndarray
+
     """
 
     if array.itemsize == 1:
@@ -34,7 +41,12 @@ def argwhere(array):
     else:
         array = np.array(array, np.uint8, copy=False)
 
-    return cv2.findNonZero(array).squeeze()[:, ::-1]
+    zeros = cv2.findNonZero(array)
+
+    if zeros is None:
+        zeros = np.array([], dtype=np.int32)
+
+    return zeros.reshape((-1, 2))[:, ::-1]
 
 
 def arg_min_max(image_array, return_values=False):
@@ -221,6 +233,8 @@ def fit_line(processed_image_array):
     """
     # points = np.argwhere(processed_image_array)[:, ::-1]  # swap x,y coords
     points = argwhere(processed_image_array)[:, ::-1]  # converts to uint8 internally. worth it!
+    if not points.size:
+        return 0, .5, 0
     line = cv2.fitLine(points, cv2.DIST_L2, 0, .01, .01).ravel()
     centroid = line[2:]
     theta = np.arctan2(line[1], line[0])
