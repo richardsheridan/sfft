@@ -141,13 +141,12 @@ class GUIPage:
 
     def add_button(self, name, callback, **kwargs):
         """
-        Plop a button down at the specified coordinates, and register a callback to it
+        Plop a button down, and register a callback to it
         
         Parameters
         ----------
         name : str
         callback : function or method
-        coords : List[float]
         kwargs
         """
         b = self.buttons[name] = self.backend.make_button(name, **kwargs)
