@@ -13,10 +13,12 @@ class NotImplementedAttribute:
 
 def _force_int(callback, setter):
     def int_wrapper(val):
-        if not isinstance(val, Int):
-            setter(int(val))
+        val = float(val)  # Sometimes val is a STRING?!?!
+        intval = int(round(val))
+        if intval == val:
+            callback(intval)
         else:
-            callback(val)
+            setter(intval)
 
     return int_wrapper
 
@@ -259,6 +261,9 @@ class TkWidgetWrapper(WidgetWrapper):
     def register(self, callback):
         if self._callbacks is None:
             self._callbacks = []
+
+        if self.forceint:
+            callback = _force_int(callback, self.set)
         self._callbacks.append(callback)
 
         def combined_callback(*a, **kw):
