@@ -6,7 +6,6 @@ from shear_lag import ShearLagGUI
 from util import get_files
 
 
-# TODO: This thing reaches into the GUIPage buttons to register a callback. Pages should expose a method instead.
 # TODO: Pages communicate by writing intermediate data to disk. It would be better to avoid disk access until the user wishes to save.
 class TkGUINotebook:
     def __init__(self, image_paths, page_classes):
@@ -78,8 +77,8 @@ class TkGUINotebook:
             f = Frame(self.notebook)
             backend = TkBackend(master=f)
             page = self.page_classes[page_index](image_paths, block=False, backend=backend, defer_initial_draw=True)
-            page.buttons['save'].register(self.mark_dirty_later_than(page_index))
-            page.buttons['save'].register(self.bind_next_page(page_index + 1))
+            page.add_callback_for_writes(self.mark_dirty_later_than(page_index))
+            page.add_callback_for_writes(self.bind_next_page(page_index + 1))
             f.bind('<Map>', page.full_reload)
             self.notebook.add(f, text=str(page))
             self.pages.append(page)

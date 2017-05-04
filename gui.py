@@ -116,6 +116,23 @@ class GUIPage:
         self.recalculate_vision()
         self.refresh_plot()
 
+    def add_callback_for_writes(self, callback):
+        '''
+        register a function to call when this guipage sends some data to disk or other guipages
+        
+        the internal procedure here is to send the callback directly to a button with the name 'save'.
+        
+        Parameters
+        ----------
+        callback : function
+
+        Returns
+        -------
+        
+        '''
+
+        self.buttons['save'].register(callback)
+
     def add_slider(self, name, callback, valmin, valmax, valinit=None, valfmt=None, label=None, isparameter=True,
                    forceint=False):
         if label is None:
@@ -219,6 +236,20 @@ class WidgetWrapper:
         raise NotImplementedError
 
     def register(self, callback):
+        '''
+        register a callback when the widget action occurs
+        
+        it is very important that this method be capable of registering multiple callbacks one at a time.
+        right now we expect the callbacks to be called in the order they were registered a la MPL
+                
+        Parameters
+        ----------
+        callback
+
+        Returns
+        -------
+
+        '''
         raise NotImplementedError
 
 
@@ -303,6 +334,7 @@ class Backend:
     
     Currently we are assuming that there will be a matplotlib figure available.
     """
+    fig = NotImplementedAttribute()
 
     def __init__(self):
         self.axes = {}
