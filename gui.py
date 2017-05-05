@@ -337,8 +337,7 @@ class Backend:
     fig = NotImplementedAttribute()
 
     def __init__(self):
-        self.axes = {}
-        self.axeslist = []
+        self.axes = OrderedDict()
         self.axesrect = (0, 0, 1, 1)
 
     def make_slider(self, name, valmin, valmax, valinit, valfmt, label, forceint):
@@ -392,11 +391,10 @@ class Backend:
 
         rows = len(axes) + 1
         ax = None
-        for i, ax in enumerate(self.axeslist):
+        for i, ax in enumerate(axes.values()):
             ax.change_geometry(rows, 1, i + 1)
         ax = axes[name] = self.fig.add_subplot(rows, 1, rows, *args, sharex=(ax if 'x' in share else None),
                                                sharey=(ax if 'y' in share else None), **kwargs)
-        self.axeslist.append(ax)
         self.fig.tight_layout(rect=self.axesrect, pad=2.0)
         return ax
 
@@ -498,8 +496,19 @@ class TkBackend(Backend):
         self.fig = Figure(figsize=size)
         self.canvas = FigureCanvasTkAgg(self.fig, master=master)
         self._toolbar = NavigationToolbar2TkAgg(self.canvas, master)
-        self._toolbar.pack(side='top')
-        self.canvas.get_tk_widget().pack(side='top', fill='both', expand=1)
+        from tkinter.ttk import Frame
+        self.widget_frame = Frame(self.master)
+
+        # Grid geometry makes resizing to small size prettier
+        self._toolbar.grid(row=0, sticky='we')
+        master.grid_rowconfigure(0, weight=0)
+        master.grid_columnconfigure(0, weight=1)
+        self.canvas.get_tk_widget().grid(row=1, sticky='wens')
+        master.grid_rowconfigure(1, weight=1)
+        master.grid_columnconfigure(0, weight=1)
+        self.widget_frame.grid(row=2, sticky='we')
+        master.grid_rowconfigure(2, weight=0)
+        master.grid_columnconfigure(0, weight=1)
 
     def on_closing(self):
         self.master.quit()
@@ -514,18 +523,18 @@ class TkBackend(Backend):
         from tkinter import IntVar, DoubleVar, StringVar
         from tkinter.ttk import Label, Scale, Frame
         if self.slider_frame is None:
-            frame = self.slider_frame = Frame(self.master, )
+            frame = self.slider_frame = Frame(self.widget_frame, )
         else:
             frame = self.slider_frame
 
         if forceint:
-            v = IntVar(self.master)
+            v = IntVar(self.widget_frame)
         else:
-            v = DoubleVar(self.master)
+            v = DoubleVar(self.widget_frame)
 
-        s = self._scales[name] = Scale(frame, variable=v, from_=valmin, to=valmax, length=200)
+        s = self._scales[name] = Scale(frame, variable=v, from_=valmin, to=valmax, length=250)
 
-        num_sv = StringVar(self.master)
+        num_sv = StringVar(self.widget_frame)
 
         def label_callback(*args):
             num_sv.set(valfmt % v.get())
@@ -546,16 +555,16 @@ class TkBackend(Backend):
         from tkinter import Button
         if label is None:
             label = name
-        b = Button(self.master, text=label)
+        b = Button(self.widget_frame, text=label)
         b.pack()
         return TkWidgetWrapper(b)
 
     def make_radiobuttons(self, name, labels=None):
         from tkinter import StringVar
         from tkinter.ttk import Radiobutton, Frame
-        v = StringVar(self.master)
+        v = StringVar(self.widget_frame)
         v.set(labels[0])
-        f = Frame(self.master, relief='groove', borderwidth=2)
+        f = Frame(self.widget_frame, relief='groove', borderwidth=2)
         for label in labels:
             b = self._radiobuttons[name + label] = Radiobutton(f, variable=v, text=label, value=label)
             b.pack(anchor='w')
