@@ -146,11 +146,13 @@ def locate_breaks(image_path, p_level, filter_width, mask_width, cutoff, neighbo
     rows, cols = image.shape
     filtered_image = make_log(image, filter_width)
 
-    row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
-    row_index, col_index = mask_stray_peaks(row_index, col_index, mask_width, rows)
+    peak_y, peak_x = peak_local_max(filtered_image, cutoff, neighborhood)
+    peak_y, peak_x = mask_stray_peaks(peak_y, peak_x, mask_width, rows)
 
-    # TODO: sort these?
-    locations = row_index / (rows - 1), col_index / (cols - 1)
+    sortind = np.argsort(peak_x)
+    peak_y, peak_x = peak_y[sortind], peak_x[sortind]
+
+    locations = peak_y / (rows - 1), peak_x / (cols - 1)
     relative_locations = (locations[1] - fids[0]) / (fids[1] - fids[0])
     fiducial_break_count = np.count_nonzero((0 < relative_locations) & (relative_locations < 1))
     return locations, relative_locations, fiducial_break_count
@@ -161,7 +163,7 @@ def save_breaks(parameters, breaks, images):
     fnames = [basename_without_stab(image) for image in images]
 
     headers = dict(parameters)
-    headers['fields'] = 'name: [locations, relative_locations,fiducial_break_count]'
+    headers['fields'] = 'name: [locations, relative_locations, fiducial_break_count]'
     data = dict(zip(fnames, breaks))
     output = [headers, data]
 
