@@ -12,9 +12,9 @@ BREAK_FILENAME = 'breaks.json'
 
 
 class BreakGUI(GUIPage):
-    def __init__(self, image_paths, stabilize_args=(), **kw):
+    def __init__(self, image_paths, stabilize_args=(), fid_args=(), **kw):
         self.image_paths = image_paths
-        self.load_args = (stabilize_args,)
+        self.load_args = (stabilize_args, fid_args)
         self.display_type = 'filtered'
 
         super().__init__(**kw)
@@ -25,27 +25,21 @@ class BreakGUI(GUIPage):
     def create_layout(self):
         self.add_axes('image')
         self.add_axes('filtered')
-        # self.artists['profile'] = self.axes['profile'].plot(0)[0]
-        # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
-        # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
         self.add_button('save', self.execute_batch, label='Save batch')
-        self.add_radiobuttons('display_type', self.set_display_type,
-                              labels=('filtered', 'thresholded',))
+        self.add_radiobuttons('display_type', self.refresh_plot, labels=('filtered', 'thresholded',))
 
-        self.add_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
-                        valinit=0,
+        self.add_slider('frame_number', self.full_reload, valmin=0, valmax=len(self.image_paths) - 1, valinit=0,
                         label='Frame Number', isparameter=False, forceint=True)
-        self.add_slider('p_level', self.update_p_level, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
+        self.add_slider('p_level', self.update_vision, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
                         forceint=True)
-        self.add_slider('filter_width', self.update_filter_width, valmin=0, valmax=10, valinit=2,
-                        label='Filter Width')
-        self.add_slider('mask_width', self.update_mask, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
-        self.add_slider('cutoff', self.update_cutoff, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
-        self.add_slider('neighborhood', self.update_neighborhood, valmin=1, valmax=100, valinit=10,
-                        label='Neighborhood', forceint=True)
+        self.add_slider('filter_width', self.update_vision, valmin=0, valmax=10, valinit=2, label='Filter Width')
+        self.add_slider('mask_width', self.update_vision, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
+        self.add_slider('cutoff', self.update_vision, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
+        self.add_slider('neighborhood', self.update_vision, valmin=1, valmax=100, valinit=10, label='Neighborhood',
+                        forceint=True)
 
     @staticmethod
-    def load_image_to_pyramid(image_path, stabilize_args):
+    def load_image_to_pyramid(image_path, stabilize_args, fid_args):
         image = load_stab_img(image_path, stabilize_args)
         pyramid = make_pyramid(image)
         return pyramid
@@ -97,32 +91,8 @@ class BreakGUI(GUIPage):
         breaks = batch(locate_breaks, self.image_paths, *parameters.values())
         save_breaks(parameters, breaks, self.image_paths)
 
-    def update_frame_number(self, *a, **kw):
-        self.select_frame()
+    def update_vision(self, *a, **kw):
         self.recalculate_vision()
-        self.refresh_plot()
-
-    def update_p_level(self, *a, **kw):
-        self.recalculate_vision()
-        self.refresh_plot()
-
-    def update_filter_width(self, *a, **kw):
-        self.recalculate_vision()
-        self.refresh_plot()
-
-    def update_cutoff(self, *a, **kw):
-        self.recalculate_locations()
-        self.refresh_plot()
-
-    def update_neighborhood(self, *a, **kw):
-        self.recalculate_locations()
-        self.refresh_plot()
-
-    def set_display_type(self, *a, **kw):
-        self.refresh_plot()
-
-    def update_mask(self, *a, **kw):
-        self.recalculate_locations()
         self.refresh_plot()
 
 

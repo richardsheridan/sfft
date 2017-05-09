@@ -2,10 +2,101 @@ import numpy as np
 from os import path
 from break_locator import load_breaks
 from fiber_locator import load_stab_img
-from cvutil import sobel_filter, arg_min_max
+from cvutil import sobel_filter, arg_min_max, make_pyramid
+from gui import GUIPage
 
-from util import quadratic_subpixel_extremum_2d, get_folder, find_zero_crossings, quadratic_subpixel_extremum_1d, PIXEL_SIZE_X
+from util import quadratic_subpixel_extremum_2d, get_folder, find_zero_crossings, quadratic_subpixel_extremum_1d, \
+    PIXEL_SIZE_X, batch
 
+
+class AnalyzerGUI(GUIPage):
+    def __init__(self, image_paths, stabilize_args=(), **kw):
+        self.image_paths = image_paths
+        self.load_args = (stabilize_args,)
+        self.display_type = 'filtered'
+
+        super().__init__(**kw)
+
+    def __str__(self):
+        return 'AnalyzerGUI'
+
+    def create_layout(self):
+        self.add_axes('image')
+        self.add_axes('filtered')
+        # self.artists['profile'] = self.axes['profile'].plot(0)[0]
+        # self.artists['cutoff'] = self.axes['profile'].plot(0, 'k:')[0]
+        # self.artists['profile_breaks'] = self.axes['profile'].plot([100] * 2, [DISPLAY_SIZE[1] / 2] * 2, 'rx', ms=10)[0]
+        self.add_button('save', self.execute_batch, label='Save batch')
+        self.add_radiobuttons('display_type', self.refresh_plot, labels=('filtered', 'thresholded',))
+
+        self.add_slider('frame_number', self.full_reload, valmin=0, valmax=len(self.image_paths) - 1,
+                        valinit=0,
+                        label='Frame Number', isparameter=False, forceint=True)
+        self.add_slider('p_level', self.update_vision, valmin=0, valmax=7, valinit=3, label='Pyramid Level',
+                        forceint=True)
+        self.add_slider('filter_width', self.update_vision, valmin=0, valmax=10, valinit=2,
+                        label='Filter Width')
+        self.add_slider('mask_width', self.update_vision, valmin=0, valmax=.5, valinit=.4, label='Mask Width')
+        self.add_slider('cutoff', self.update_vision, valmin=0, valmax=10, valinit=5, label='Amplitude Cutoff')
+        self.add_slider('neighborhood', self.update_vision, valmin=1, valmax=100, valinit=10,
+                        label='Neighborhood', forceint=True)
+
+    @staticmethod
+    def load_image_to_pyramid(image_path, stabilize_args):
+        image = load_stab_img(image_path, stabilize_args)
+        pyramid = make_pyramid(image)
+        return pyramid
+
+    def recalculate_vision(self):
+        self.recalculate_blobs()
+        self.recalculate_locations()
+
+    def recalculate_blobs(self):
+        image = self.pyramid[self.slider_value('p_level')]
+        self.filtered_image = make_log(image, self.slider_value('filter_width'))
+
+    def recalculate_locations(self):
+        filtered_image = self.filtered_image
+        rows, cols = filtered_image.shape
+        cutoff = self.slider_value('cutoff')
+        neighborhood = self.slider_value('neighborhood')
+        mask_width = self.slider_value('mask_width')
+
+        row_index, col_index = peak_local_max(filtered_image, cutoff, neighborhood)
+        row_index, col_index = mask_stray_peaks(row_index, col_index, mask_width, rows)
+
+        self.locations = row_index / (rows - 1), col_index / (cols - 1)
+        print(len(row_index))
+
+    def refresh_plot(self):
+        image = self.pyramid[self.slider_value('p_level')]
+        self.clear('image')
+        # TODO: use extent=[0,real_width,0,real_height]
+        self.imshow('image', image, extent=[0, 1, 1, 0])
+        self.plot('image', self.locations[1], self.locations[0], 'rx', ms=10)
+
+        filtered = self.filtered_image
+        if self.button_value('display_type') == 'thresholded':
+            break_amp = self.slider_value('cutoff')
+            filtered = (filtered > break_amp).view(np.uint8)
+        self.clear('filtered')
+        self.imshow('filtered', filtered, extent=[0, 1, 1, 0])
+        self.plot('filtered', self.locations[1], self.locations[0], 'rx', ms=10)
+
+        mask_width = self.slider_value('mask_width')
+        self.hspan('filtered', 0.001, mask_width, facecolor='r', alpha=0.3)
+        self.hspan('filtered', .999 - mask_width, 1, facecolor='r', alpha=0.3)
+
+        self.draw()
+
+    def execute_batch(self, *a, **kw):
+        parameters = self.parameters
+        breaks = batch(locate_breaks, self.image_paths, *parameters.values())
+        save_breaks(parameters, breaks, self.image_paths)
+
+    def update_vision(self, *a, **kw):
+        self.recalculate_vision()
+        self.refresh_plot()
 
 def find_gap_edges(break_image):
     filtered_image = sobel_filter(break_image, 1, 0)
