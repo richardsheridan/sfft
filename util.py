@@ -66,7 +66,7 @@ def batch(func, image_paths, *args, return_futures=False):
     Parameters
     ----------
     func : function
-    image_paths : List[str]
+    image_paths : list[str]
     args : tuple
     return_futures : bool
 
