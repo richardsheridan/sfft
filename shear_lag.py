@@ -163,21 +163,35 @@ def load_dataset(folder):
         good_strains], label)
 
 
-def calc_fiber_stress(strain, fiber_modulus, fiber_poisson=None, matrix_modulus=None, matrix_poisson=0.5):
-    if None in (fiber_poisson, matrix_modulus, matrix_poisson):
-        return fiber_modulus * strain
+def calc_fiber_stress(strain, fiber_modulus, fiber_poisson=.22, matrix_modulus=None, matrix_poisson=0.5):
+    """
+    Don't reactivate commented code until you have serious tests
+    Parameters
+    ----------
+    strain
+    fiber_modulus
+    fiber_poisson
+    matrix_modulus
+    matrix_poisson
 
-    fiber_reduced_modulus = fiber_modulus / (1 + fiber_poisson) / (1 - 2 * fiber_poisson)
-    matrix_reduced_modulus = matrix_modulus / (1 + matrix_poisson) / (1 - 2 * matrix_poisson)
-    modulus_ratio = matrix_reduced_modulus / fiber_reduced_modulus
-    lateral_contraction = (
-        ((1 - fiber_poisson) * (1 + modulus_ratio) + 2 * fiber_poisson * (
-            modulus_ratio * matrix_poisson - fiber_poisson))
-        /
-        (1 + modulus_ratio * (1 - 2 * matrix_poisson))
-    )
+    Returns
+    -------
 
-    return fiber_reduced_modulus * strain * lateral_contraction
+    """
+    # if None in (fiber_poisson, matrix_modulus, matrix_poisson):
+    return fiber_modulus * strain
+
+    # fiber_reduced_modulus = fiber_modulus / (1 + fiber_poisson) / (1 - 2 * fiber_poisson)
+    # matrix_reduced_modulus = matrix_modulus / (1 + matrix_poisson) / (1 - 2 * matrix_poisson)
+    # modulus_ratio = matrix_reduced_modulus / fiber_reduced_modulus
+    # lateral_contraction = (
+    #     ((1 - fiber_poisson) * (1 + modulus_ratio) + 2 * fiber_poisson * (
+    #         modulus_ratio * matrix_poisson - fiber_poisson))
+    #     /
+    #     (1 + modulus_ratio * (1 - 2 * matrix_poisson))
+    # )
+    #
+    # return fiber_reduced_modulus * strain * lateral_contraction
 
 
 def kt_multiplier(l_c):
@@ -202,7 +216,7 @@ Result = namedtuple('Result',
                     'saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks')
 
 
-def calc_shear_lag(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_eps=0, fiber_poisson=None):
+def calc_shear_lag(dataset, K=.668, fiber_modulus=80, fiber_radius=None, fiber_eps=0, fiber_poisson=.22):
     break_count, avg_frag_len, matrix_strains, matrix_stress, label = dataset
     fiber_strains = matrix_strains + fiber_eps
     # strain_at_1st_break =  interpolate(1, break_count, fiber_strains)
