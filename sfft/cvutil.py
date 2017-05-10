@@ -1,8 +1,7 @@
 import cv2
-
 import numpy as np
 
-from util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
+from .util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
 
 
 def argwhere(array):
@@ -12,13 +11,13 @@ def argwhere(array):
     
     Assumes a 2D, single channel image array!
 
-    >>> import numpy as np, cvutil
+    >>> import numpy as np
     >>> a = np.bool8([[0,1,0],[0,0,1]])
     >>> p = np.argwhere(a)
     >>> print(p)
     [[0 1]
      [1 2]]
-    >>> q = cvutil.argwhere(a)
+    >>> q = argwhere(a)
     >>> print(q)
     [[0 1]
      [1 2]]

@@ -1,15 +1,15 @@
 import json
 from collections import namedtuple, OrderedDict
+from os import path
 
 import numpy as np
-from os import path
-from break_locator import load_breaks
-from fiber_locator import load_stab_img
-from cvutil import sobel_filter, arg_min_max, make_pyramid
-from gui import GUIPage
-
-from util import quadratic_subpixel_extremum_2d, get_folder, find_zero_crossings, quadratic_subpixel_extremum_1d, \
+from .cvutil import sobel_filter, arg_min_max, make_pyramid
+from .fiber_locator import load_stab_img
+from .gui import GUIPage
+from .util import quadratic_subpixel_extremum_2d, find_zero_crossings, quadratic_subpixel_extremum_1d, \
     PIXEL_SIZE_X, batch, basename_without_stab, get_files, dump
+
+from sfft.break_locator import load_breaks
 
 ANALYSIS_FILENAME = 'analysis.json'
 

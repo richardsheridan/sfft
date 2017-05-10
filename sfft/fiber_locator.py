@@ -1,9 +1,10 @@
 from os import path
 
-from cvutil import make_pyramid, sobel_filter, draw_line, puff_pyramid, correct_tdi_aspect, fit_line, \
+from .cvutil import make_pyramid, sobel_filter, puff_pyramid, correct_tdi_aspect, fit_line, \
     rotate_fiber, imwrite, imread, binary_threshold, clipped_line_points
-from gui import GUIPage
-from util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
+from .gui import GUIPage
+
+from .util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
 
 STABILIZE_FILENAME = 'stabilize.json'
 
@@ -179,7 +180,7 @@ def save_stab(image_paths, batch, threshold, p_level):
               }
 
     output = [header, data]
-    from util import dump
+    from sfft.util import dump
     stab_path = path.join(dname, STABILIZE_FILENAME)
     print('Parameters and shifts stored in:')
     print(stab_path)

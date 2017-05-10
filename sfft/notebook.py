@@ -1,4 +1,4 @@
-from gui import TkBackend
+from .gui import TkBackend
 
 
 # TODO: Pages communicate by writing intermediate data to disk. It would be better to avoid disk access until the user wishes to save.
@@ -83,12 +83,12 @@ class TkGUINotebook:
 
 
 if __name__ == '__main__':
-    from break_analyzer import AnalyzerGUI
-    from fiber_locator import FiberGUI
-    from fiducial_locator import FidGUI
-    from break_locator import BreakGUI
-    from shear_lag import ShearLagGUI
-    from util import get_files
+    from sfft.break_analyzer import AnalyzerGUI
+    from sfft.fiber_locator import FiberGUI
+    from sfft.fiducial_locator import FidGUI
+    from sfft.break_locator import BreakGUI
+    from sfft.shear_lag import ShearLagGUI
+    from sfft.util import get_files
 
     image_paths = get_files()
     pages = [FiberGUI, FidGUI, BreakGUI, AnalyzerGUI, ShearLagGUI]

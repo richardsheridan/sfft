@@ -54,7 +54,7 @@ def unit_interval_floats(allow_nan=False):
 ### TESTS START HERE
 
 
-from util import wavelet_filter, STABILIZE_PREFIX, quadratic_subpixel_extremum_1d
+from sfft.util import wavelet_filter, STABILIZE_PREFIX, quadratic_subpixel_extremum_1d
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
@@ -72,7 +72,7 @@ def test_wavelet_filter(series, sigma, bandwidth):
     assert series.dtype == filtered_series.dtype
 
 
-from util import find_zero_crossings, VALID_ZERO_CROSSING_DIRECTIONS
+from sfft.util import find_zero_crossings, VALID_ZERO_CROSSING_DIRECTIONS
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
@@ -93,10 +93,10 @@ def test_find_zero_crossings(series, direction):
         values = series[candidates]
 
 
-from util import path_with_stab
+from sfft.util import path_with_stab
 import os
 
-from util import VALID_IMAGE_EXTENSIONS
+from sfft.util import VALID_IMAGE_EXTENSIONS
 
 
 @given(st.text(min_size=1), st.sampled_from(VALID_IMAGE_EXTENSIONS))
@@ -113,7 +113,7 @@ def test_path_with_stab(path, ext):
         assert path == output
 
 
-from util import basename_without_stab
+from sfft.util import basename_without_stab
 
 
 @given(st.text(min_size=1), st.sampled_from(VALID_IMAGE_EXTENSIONS))
@@ -136,7 +136,7 @@ def test_stab_roundtrip(path, ext):
     assert os.path.join(dirname, path_with_stab(basename_without_stab(path) + ext)) == path
 
 
-from util import quadratic_subpixel_extremum_2d
+from sfft.util import quadratic_subpixel_extremum_2d
 
 
 @given(st.one_of(rnd_shape_images('f8', min_len=3, max_len=20),

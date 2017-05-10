@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from util import batch
+from .util import batch
 
 
 class NotImplementedAttribute:

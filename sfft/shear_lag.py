@@ -5,11 +5,11 @@ from tkinter import Tk
 from tkinter.filedialog import askdirectory
 
 import numpy as np
+from .break_locator import load_breaks
+from .gui import GUIPage
+from .util import parse_strain_dat, parse_strain_headers
 
-from break_locator import load_breaks
-from fiducial_locator import load_strain
-from gui import GUIPage
-from util import parse_strain_dat, get_files, parse_strain_headers
+from .fiducial_locator import load_strain
 
 SHEAR_LAG_FILENAME = 'shear_lag.json'
 
@@ -252,7 +252,7 @@ def save_shear_lag(parameters, folder, result):
     output = [headers, result]
 
     shear_lag_path = path.join(folder, SHEAR_LAG_FILENAME)
-    from util import dump
+    from sfft.util import dump
     mode = 'w'
     with open(shear_lag_path, mode) as file:
         dump(output, file)

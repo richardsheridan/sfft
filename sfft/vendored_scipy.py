@@ -195,7 +195,7 @@ def fftconvolve(in1, in2, mode="full"):
     Autocorrelation of white noise is an impulse.  (This is at least 100 times
     as fast as `convolve`.)
 
-    >>> from vendored_scipy import fftconvolve
+    >>> from sfft.vendored_scipy import fftconvolve
     >>> sig = np.sin(np.arange(0,8*np.pi))
     >>> print(sig)
     [ 0.          0.84147098  0.90929743  0.14112001 -0.7568025  -0.95892427

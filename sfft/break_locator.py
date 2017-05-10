@@ -3,11 +3,10 @@ from collections import OrderedDict
 from os import path
 
 import numpy as np
-
-from cvutil import make_pyramid, make_log
-from gui import GUIPage
-from fiber_locator import load_stab_img
-from util import basename_without_stab, peak_local_max, batch, get_files
+from .cvutil import make_pyramid, make_log
+from .fiber_locator import load_stab_img
+from .gui import GUIPage
+from .util import basename_without_stab, peak_local_max, batch, get_files
 
 BREAK_FILENAME = 'breaks.json'
 
@@ -106,10 +105,10 @@ def mask_stray_peaks(row_index, col_index, mask_width, rows):
 
 def locate_breaks(image_path, p_level, filter_width, mask_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
-    from fiber_locator import load_stab_img
+    from sfft.fiber_locator import load_stab_img
     image = load_stab_img(image_path, *stabilize_args)
 
-    from fiducial_locator import load_fids
+    from sfft.fiducial_locator import load_fids
     fids = load_fids(image_path, image, *fid_args)
 
     pyramid = make_pyramid(image, p_level)
@@ -142,7 +141,7 @@ def save_breaks(parameters, breaks, images):
     breakpath = path.join(folder, BREAK_FILENAME)
     print(breakpath)
 
-    from util import dump
+    from sfft.util import dump
     mode = 'w'
     with open(breakpath, mode) as file:
         dump(output, file)

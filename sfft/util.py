@@ -1,9 +1,13 @@
-import sys, os, json
+import json
+import os
+import sys
+from concurrent.futures import ProcessPoolExecutor, Executor, Future
+from numbers import Number
+
 import numpy as np
+
 # from numpy import convolve
-from vendored_scipy import fftconvolve as convolve, ricker, gaussian
-from numbers import Integral as Int, Number
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, Executor, Future
+from .vendored_scipy import fftconvolve as convolve, ricker, gaussian
 
 STABILIZE_PREFIX = 'stab_'
 VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
