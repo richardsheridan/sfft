@@ -143,7 +143,7 @@ def load_dataset(folder):
 
     breaks = []
     strains = []
-    for (name, count), strain in zip(names_breaks, fid_strains):
+    for (name, count), strain in zip(names_breaks.items(), fid_strains):
         if 'str' in name:
             breaks.append(count)
             strains.append(strain)

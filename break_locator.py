@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 from os import path
 
 import numpy as np
@@ -160,7 +161,7 @@ def load_breaks(directory, output=None):
          'count': 2,
          }.get(output, output)
 
-    return [(name, data[name][i]) for name in sorted(data)]
+    return OrderedDict((name, data[name][i]) for name in sorted(data))
 
 
 if __name__ == '__main__':

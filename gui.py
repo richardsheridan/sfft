@@ -398,8 +398,8 @@ class Backend:
         self.fig.tight_layout(rect=self.axesrect, pad=2.0)
         return ax
 
-    def imshow(self, name, image, **kwargs):
-        self.axes[name].imshow(image, cmap='gray', aspect='auto', **kwargs)
+    def imshow(self, name, image, aspect='auto', **kwargs):
+        self.axes[name].imshow(image, cmap='gray', aspect=aspect, **kwargs)
 
     def plot(self, name, x, y, fmt, **kwargs):
         ylim = kwargs.pop('ylim', None)

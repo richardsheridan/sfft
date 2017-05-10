@@ -1,3 +1,4 @@
+from break_analyzer import AnalyzerGUI
 from fiber_locator import FiberGUI
 from fiducial_locator import FidGUI
 from break_locator import BreakGUI
@@ -89,5 +90,5 @@ class TkGUINotebook:
 
 if __name__ == '__main__':
     image_paths = get_files()
-    pages = [FiberGUI, FidGUI, BreakGUI, ShearLagGUI]
+    pages = [FiberGUI, FidGUI, BreakGUI, AnalyzerGUI, ShearLagGUI]
     a = TkGUINotebook(image_paths, pages)
