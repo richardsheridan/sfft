@@ -42,18 +42,6 @@ class FiberGUI(GUIPage):
                         label='edge threshold')
         self.add_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=0, label='Pyramid Level',
                         forceint=True)
-        # self.register_slider('ksize', self.update_edge,
-        #                      forceint=True,
-        #                      label='Kernel size',
-        #                      min=0,
-        #                      max=5,
-        #                      init=0, )
-        # self.register_slider('iter', self.update_edge,
-        #                      forceint=True,
-        #                      label='morph. iterations',
-        #                      min=0,
-        #                      max=5,
-        #                      init=0, )
 
     @staticmethod
     def load_image_to_pyramid(image_path):
@@ -88,16 +76,12 @@ class FiberGUI(GUIPage):
         if label == 'original':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
-            # image = draw_line(image, self.slope, self.intercept*image.shape[0], 0)
         elif label == 'filtered':
             image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-
-            # image = draw_line(image, self.slope, self.intercept*image.shape[0], float(image.max()))
         elif label == 'edges':
             image = self.edges * 255
             image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-            # image = draw_line(image, self.slope, self.intercept*image.shape[0], 255)
         elif label == 'rotated':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
@@ -107,7 +91,6 @@ class FiberGUI(GUIPage):
             return
 
         self.display_image_array = image  # .astype('uint8')
-        # image = cv2.resize(image, DISPLAY_SIZE, interpolation=cv2.INTER_CUBIC)
         self.imshow('image', image)
         if label != 'rotated':
             self.plot('image', *clipped_line_points(image, self.slope, self.intercept), 'r-.')

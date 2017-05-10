@@ -1,6 +1,4 @@
 import sys, os, json
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename, asksaveasfilename, askdirectory
 import numpy as np
 # from numpy import convolve
 from vendored_scipy import fftconvolve as convolve, ricker, gaussian
@@ -89,6 +87,8 @@ def get_files():
     -------
     List[str]
     """
+    from tkinter import Tk
+    from tkinter.filedialog import askopenfilename
     # we don't want a full GUI, so keep the root window from appearing
     tk = Tk()
     tk.withdraw()
@@ -114,6 +114,8 @@ def get_folder():
     """
     Open a dialog and return a folder.
     """
+    from tkinter import Tk
+    from tkinter.filedialog import askdirectory
     # we don't want a full GUI, so keep the root window from appearing
     tk = Tk()
     tk.withdraw()
@@ -136,6 +138,8 @@ def put_file():
     """
     Open a dialog and return a path for save file.
     """
+    from tkinter import Tk
+    from tkinter.filedialog import asksaveasfilename
     # we don't want a full GUI, so keep the root window from appearing
     tk = Tk()
     tk.withdraw()

@@ -3,13 +3,11 @@ from collections import namedtuple
 from os import path
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
-from tkinter.messagebox import askyesno
 
 import numpy as np
 
-from break_locator import load_breaks, BreakGUI
-from fiber_locator import FiberGUI
-from fiducial_locator import load_strain, FidGUI
+from break_locator import load_breaks
+from fiducial_locator import load_strain
 from gui import GUIPage
 from util import parse_strain_dat, get_files, parse_strain_headers
 

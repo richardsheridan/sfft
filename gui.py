@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-from numbers import Integral as Int
 from util import batch
 
 
