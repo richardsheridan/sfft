@@ -71,7 +71,8 @@ class TkGUINotebook:
             from tkinter.ttk import Frame
             f = Frame(self.notebook)
             backend = TkBackend(master=f)
-            page = self.page_classes[page_index](image_paths, block=False, backend=backend, defer_initial_draw=True)
+            page = self.page_classes[page_index](self.image_paths, block=False, backend=backend,
+                                                 defer_initial_draw=True)
             page.add_callback_for_writes(self.mark_dirty_later_than(page_index))
             page.add_callback_for_writes(self.bind_next_page(page_index + 1))
             f.bind('<Map>', page.full_reload)
