@@ -48,13 +48,7 @@ def dump(obj, fp):
     fp.writelines(_default_encoder.iterencode(obj))
 
 
-# NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-executor = ProcessPoolExecutor()
-
-
-# executor = ThreadPoolExecutor()
-# executor = SynchronousExecutor()
-
+executor = None
 
 def batch(func, image_paths, *args, return_futures=False):
     """
@@ -76,6 +70,13 @@ def batch(func, image_paths, *args, return_futures=False):
     -------
     list[Future] or list[Any]
     """
+    global executor
+    if executor is None:
+        # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
+        executor = ProcessPoolExecutor()
+        # executor = ThreadPoolExecutor()
+        # executor = SynchronousExecutor()
+
     futures = [executor.submit(func, image_path, *args) for image_path in image_paths]
     if return_futures:
         return futures
