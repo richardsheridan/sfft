@@ -211,12 +211,12 @@ def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
         print('Processing: ' + path.basename(image))
         from sfft.fiber_locator import load_stab_img
         image = load_stab_img(image, *stabilize_args)
-        pyramid = make_pyramid(image, p_level)
     elif isinstance(image, np.ndarray):
         pass
     else:
         raise ValueError('Unknown type', type(image))
 
+    pyramid = make_pyramid(image, p_level)
     pyramid_image = pyramid[p_level]
     profile = fid_profile_from_image(pyramid_image)
     filter_width_pixels = filter_width * len(profile)
