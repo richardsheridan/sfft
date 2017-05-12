@@ -1,5 +1,5 @@
 from .util import get_files
-from .notebook import TkGUINotebook
+from .gui import TkGUINotebook
 from .fiber_locator import FiberGUI, load_stab_data, save_stab
 from .fiducial_locator import FidGUI, load_fids, save_fids, load_strain
 from .break_locator import BreakGUI, load_breaks, save_breaks
