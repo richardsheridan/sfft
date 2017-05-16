@@ -18,6 +18,7 @@ class AnalyzerGUI(GUIPage):
         self.image_paths = image_paths
         self.breaks_dict = load_breaks(path.dirname(image_paths[0]), 'absolute')
         self.load_args = (stabilize_args, fid_args, break_args)
+        self.nobreaks = False
 
         super().__init__(**kw)
 
@@ -48,6 +49,11 @@ class AnalyzerGUI(GUIPage):
         image = self.pyramid[0]
         name = basename_without_stab(self.image_paths[self.slider_value('frame_number')])
         breaks = np.array(self.breaks_dict[name])
+        if not len(breaks[1]):
+            self.nobreaks = True
+            return
+        else:
+            self.nobreaks = False
         i = np.argmin(abs(breaks[1] - self.slider_value('break_position')))
         self.centroid = centroid = breaks[:, i]
         print(centroid)
@@ -60,6 +66,10 @@ class AnalyzerGUI(GUIPage):
         self.clear('image')
         # TODO: use extent=[0,real_width,0,real_height]
         self.imshow('image', image, extent=[0, 1, 1, 0])
+        if self.nobreaks:
+            self.clear('break')
+            self.draw()
+            return
         w = self.slider_value('width')
         h = w / (r - 1) * (c - 1)
         y, x = self.centroid
@@ -193,7 +203,7 @@ def analyze_breaks(image_path, breaks_dict, width):
         break_image = select_break_image(image, break_centroid, width)
         gap_width, fiber_diameter = analyze_break(break_image)
         result.append((gap_width, fiber_diameter))
-    return np.transpose(result)
+    return np.transpose(result) if result else (np.array([], dtype=int), np.array([], dtype=int))
 
 
 def save_analysis(parameters, analysis, images):
