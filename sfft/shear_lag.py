@@ -53,9 +53,9 @@ class ShearLagGUI(GUIPage):
                         label='Fiber Radius')
         self.add_slider('fiber_eps', self.update, valmin=-.05, valmax=.05, valinit=0, valfmt='%.03f',
                         label='Fiber Pre-extension')
-        self.add_axes('n_breaks', share='x')
-        self.add_axes('l_frags', share='x')
-        self.add_axes('stress_strain', share='')
+        self.add_axes('stress_strain', share='', ylabel='Matrix Stress (MPa)', xlabel='Matrix Strain (%)')
+        self.add_axes('n_breaks', share='x', ylabel='Num. Breaks')
+        self.add_axes('l_frags', share='x', ylabel='Avg. Frag. Len. $(\mu m)$', xlabel='Fiber Strain (%)')
 
     @staticmethod
     def load_image_to_pyramid(*args):
@@ -78,13 +78,8 @@ class ShearLagGUI(GUIPage):
         self.clear('l_frags')
         self.clear('stress_strain')
         self.plot('n_breaks', (self.dataset.strains + e) * 100, self.dataset.break_count, 'b')
-        # axs[0].set_ylabel('Num. Breaks')
         self.plot('l_frags', (self.dataset.strains + e) * 100, self.dataset.avg_frag_len, 'b', ylim=[0, 2500])
-        # axs[1].axis(ymax=max(1000, critical_length * 2.25), ymin=0)
-        # axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
         self.plot('stress_strain', self.dataset.strains * 100, self.dataset.matrix_stress, 'b')
-        # axs[2].set_ylabel('Matrix Stress (MPa)')
-        # axs[2].set_xlabel('Matrix strain (%)')
         self.hline('l_frags', (2 * self.result.critical_length), linestyle=':')
         self.vline('n_breaks', self.result.strain_at_l_c * 100, linestyle=':')
         self.vline('l_frags', self.result.strain_at_l_c * 100, linestyle=':')
