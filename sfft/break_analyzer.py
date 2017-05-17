@@ -9,7 +9,7 @@ from .gui import GUIPage
 from .util import quadratic_subpixel_extremum_2d, find_zero_crossings, quadratic_subpixel_extremum_1d, \
     PIXEL_SIZE_X, batch, basename_without_stab, get_files, dump
 
-from sfft.break_locator import load_breaks
+from .break_locator import load_breaks
 
 ANALYSIS_FILENAME = 'analysis.json'
 

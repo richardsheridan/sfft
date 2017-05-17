@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from concurrent.futures import ProcessPoolExecutor, Executor, Future
+import concurrent.futures as cf
 from numbers import Number
 
 import numpy as np
@@ -18,9 +18,9 @@ PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
 
 
-class SynchronousExecutor(Executor):
-    def submit(self, fn, *args, **kwargs):
-        f = Future()
+class SynchronousExecutor(cf.Executor):
+    def submit(self, fn, *args, _Future=cf.Future, **kwargs):
+        f = _Future()
         result = fn(*args, **kwargs)
         # The future is now
         f.set_result(result)
@@ -73,8 +73,8 @@ def batch(func, image_paths, *args, return_futures=False):
     global executor
     if executor is None:
         # NOTE: as of 3/20/17 0fc7d9d, TPE and PPE are the same speed for normal workloads, so use safer PPE
-        executor = ProcessPoolExecutor()
-        # executor = ThreadPoolExecutor()
+        executor = cf.ProcessPoolExecutor()
+        # executor = cf.ThreadPoolExecutor()
         # executor = SynchronousExecutor()
 
     futures = [executor.submit(func, image_path, *args) for image_path in image_paths]

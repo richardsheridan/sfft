@@ -1,8 +1,6 @@
 import json
 from collections import namedtuple
 from os import path
-from tkinter import Tk
-from tkinter.filedialog import askdirectory
 
 import numpy as np
 from .break_locator import load_breaks
@@ -109,6 +107,8 @@ class ShearLagGUI(GUIPage):
 
 
 def choose_dataset():
+    from tkinter import Tk
+    from tkinter.filedialog import askdirectory
     tk = Tk()
     tk.withdraw()
     folder = askdirectory(title='Choose dataset to analyze', mustexist=True)
@@ -259,45 +259,3 @@ def load_shear_lag(folder):
     with open(shear_lag_path) as fp:
         header, data = json.load(fp)
     return header, data
-
-
-
-if __name__ == '__main__':
-    folder = choose_dataset()
-    ShearLagGUI(folder)
-    # if askyesno('Re-analyze images?', 'Re-analyze images?'):
-    #     images = get_files()
-    #     FiberGUI(images)
-    #     FidGUI(images)
-    #     BreakGUI(images)
-    #     folder = path.dirname(images[0])
-    # print(path.basename(folder))
-    #
-    # break_count, avg_frag_len, strains, matrix_stress, label = dataset = load_dataset(folder)
-    # saturation_aspect_ratio, critical_length, ifss_kt, ifss_cox, strain_at_l_c, stress_at_l_c, breaks = \
-    #     calc_shear_lag(dataset, fiber_modulus=80, K=.668)
-    #
-    # print('l_c: %.3g um' % critical_length)
-    # print('KT IFSS: %.3g MPa' % ifss_kt)
-    # print('COX IFSS: %.3g MPa' % ifss_cox)
-    # print('strain at l_c:  %.3g %%' % (strain_at_l_c * 100))
-    # print('stress at l_c:  %.3g GPa' % (stress_at_l_c / 1000))
-    # print('Breaks: %d' % breaks)
-    #
-    # import matplotlib.pyplot as plt
-    #
-    # fig, axs = plt.subplots(3, 1, 'col')
-    # axs[0].plot(strains*100, break_count)
-    # axs[0].set_ylabel('Num. Breaks')
-    # axs[1].plot(strains*100, avg_frag_len)
-    # axs[1].axis(ymax=max(1000,critical_length*2.25),ymin=0)
-    # axs[1].set_ylabel('Avg. Frag. Len. $(\mu m)$')
-    # axs[2].plot(strains*100, matrix_stress)
-    # axs[2].set_ylabel('Matrix Stress (MPa)')
-    # axs[2].set_xlabel('Matrix strain (%)')
-    # axs[1].axhline((2 * critical_length), linestyle=':')
-    # axs[0].axvline(strain_at_l_c*100, linestyle=':')
-    # axs[1].axvline(strain_at_l_c*100, linestyle=':')
-    # axs[2].axvline(strain_at_l_c*100, linestyle=':')
-    #
-    # plt.show(1)
