@@ -365,7 +365,7 @@ class Backend:
         """
         self.fig.canvas.draw()
 
-    def add_axes(self, name, *args, share='xy', **kwargs):
+    def add_axes(self, name, *args, share='xy', xlabel=None, ylabel=None, **kwargs):
         """
         Plop some axes down in a sensible grid.
         
@@ -375,9 +375,10 @@ class Backend:
                 
         Parameters
         ----------
-        coords : List[float]
-        args
-        kwargs
+        name : str
+        share : str
+        xlabel : str
+        ylabel : str
 
         Returns
         -------
@@ -394,6 +395,11 @@ class Backend:
             ax.change_geometry(rows, 1, i + 1)
         ax = axes[name] = self.fig.add_subplot(rows, 1, rows, *args, sharex=(ax if 'x' in share else None),
                                                sharey=(ax if 'y' in share else None), **kwargs)
+        if xlabel is not None:
+            ax.set_xlabel(xlabel)
+        if ylabel is not None:
+            ax.set_ylabel(ylabel)
+
         self.fig.tight_layout(rect=self.axesrect, pad=2.0)
         return ax
 
@@ -409,7 +415,22 @@ class Backend:
         ax.set_ylim(ylim)
 
     def clear(self, name):
-        self.axes[name].clear()
+        """
+        Clear the axes
+        
+        MPL helpfully deletes the labels and other things, so we save and restore
+        
+        Parameters
+        ----------
+        name: str
+
+        """
+        ax = self.axes[name]
+        xlabel = ax.get_xlabel()
+        ylabel = ax.get_ylabel()
+        ax.clear()
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
 
     def vline(self, name, loc, **kwargs):
         self.axes[name].axvline(loc, **kwargs)
@@ -638,7 +659,7 @@ class TkGUINotebook:
             if page_index != len(self.pages):
                 return
             from tkinter.ttk import Frame
-            f = Frame(self.notebook)
+            f = Frame(self.root)
             backend = TkBackend(master=f)
             page = self.page_classes[page_index](self.image_paths, block=False, backend=backend,
                                                  defer_initial_draw=True)
