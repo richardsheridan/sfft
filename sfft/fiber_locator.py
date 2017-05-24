@@ -95,7 +95,7 @@ class FiberGUI(GUIPage):
         self.imshow('image', image)
         if label != 'rotated':
             self.plot('image', *clipped_line_points(image, self.slope, self.intercept), 'r-.')
-        # TODO: draw line using matplotlib overlay
+
         self.draw()
 
     def execute_batch(self, *a, **kw):
@@ -180,7 +180,7 @@ def save_stab(image_paths, batch, threshold, p_level):
               }
 
     output = [header, data]
-    from sfft.util import dump
+    from .util import dump
     stab_path = path.join(dname, STABILIZE_FILENAME)
     print('Parameters and shifts stored in:')
     print(stab_path)

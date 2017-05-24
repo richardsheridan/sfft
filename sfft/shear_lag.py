@@ -11,7 +11,6 @@ from .fiducial_locator import load_strain
 
 SHEAR_LAG_FILENAME = 'shear_lag.json'
 
-# TODO: collect fiber radius for each dataset from image analysis (fiber_locator.py?)
 radius_dict = {'pristine': 5.78,
                'a1100': 4.92,
                'a187': 5.52,
@@ -247,7 +246,7 @@ def save_shear_lag(parameters, folder, result):
     output = [headers, result]
 
     shear_lag_path = path.join(folder, SHEAR_LAG_FILENAME)
-    from sfft.util import dump
+    from .util import dump
     mode = 'w'
     with open(shear_lag_path, mode) as file:
         dump(output, file)

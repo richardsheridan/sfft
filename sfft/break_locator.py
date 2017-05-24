@@ -105,10 +105,10 @@ def mask_stray_peaks(row_index, col_index, mask_width, rows):
 
 def locate_breaks(image_path, p_level, filter_width, mask_width, cutoff, neighborhood, fid_args=(), stabilize_args=()):
     print('Processing: ', path.basename(image_path))
-    from sfft.fiber_locator import load_stab_img
+    from .fiber_locator import load_stab_img
     image = load_stab_img(image_path, *stabilize_args)
 
-    from sfft.fiducial_locator import load_fids
+    from .fiducial_locator import load_fids
     fids = load_fids(image_path, image, *fid_args)
 
     pyramid = make_pyramid(image, p_level)
@@ -141,7 +141,7 @@ def save_breaks(parameters, breaks, images):
     breakpath = path.join(folder, BREAK_FILENAME)
     print(breakpath)
 
-    from sfft.util import dump
+    from .util import dump
     mode = 'w'
     with open(breakpath, mode) as file:
         dump(output, file)

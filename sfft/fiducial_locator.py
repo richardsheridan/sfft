@@ -209,7 +209,7 @@ def find_grips(profile, threshold = 2):
 def locate_fids(image, p_level, filter_width, cutoff, stabilize_args=()):
     if isinstance(image, str):  # TODO: more robust dispatch
         print('Processing: ' + path.basename(image))
-        from sfft.fiber_locator import load_stab_img
+        from .fiber_locator import load_stab_img
         image = load_stab_img(image, *stabilize_args)
     elif isinstance(image, np.ndarray):
         pass
@@ -263,7 +263,7 @@ def load_strain(dirname):
 
 def save_fids(parameters, images, left_fids, right_fids):
     folder = path.dirname(images[0])
-    from sfft.util import parse_strain_headers
+    from .util import parse_strain_headers
     tdi_length = parse_strain_headers(folder)[1]
     initial_displacement = right_fids[0] - left_fids[0]
     strains = (right_fids - left_fids) / initial_displacement - 1
@@ -276,7 +276,7 @@ def save_fids(parameters, images, left_fids, right_fids):
     fidpath = path.join(folder, FIDUCIAL_FILENAME)
     print(fidpath)
 
-    from sfft.util import dump
+    from .util import dump
     data = {fname: (left, right, strain)
             for fname, left, right, strain in zip(fnames, left_fids, right_fids, strains)}
 
