@@ -4,6 +4,8 @@ from hypothesis import given, settings, assume
 from hypothesis.extra.numpy import arrays
 from pytest import approx
 
+import sfft.util as util
+
 
 # MY STRATEGIES
 
@@ -54,7 +56,6 @@ def unit_interval_floats(allow_nan=False):
 ### TESTS START HERE
 
 
-from sfft.util import wavelet_filter, STABILIZE_PREFIX, quadratic_subpixel_extremum_1d
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
@@ -67,26 +68,25 @@ def test_wavelet_filter(series, sigma, bandwidth):
     if bandwidth is not None:
         bandwidth *= sigma
     with np.errstate(divide='ignore', invalid='ignore'):
-        filtered_series = wavelet_filter(series, sigma, bandwidth)
+        filtered_series = util.wavelet_filter(series, sigma, bandwidth)
     assert len(filtered_series) == len(series)
     assert series.dtype == filtered_series.dtype
 
 
-from sfft.util import find_zero_crossings, VALID_ZERO_CROSSING_DIRECTIONS
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
-       st.one_of(st.sampled_from(VALID_ZERO_CROSSING_DIRECTIONS),
+       st.one_of(st.sampled_from(util.VALID_ZERO_CROSSING_DIRECTIONS),
                  st.text(min_size=3, max_size=20)))
 @settings(buffer_size=2 ** 16, max_examples=40)  # ,suppress_health_check=[HealthCheck.too_slow])
 def test_find_zero_crossings(series, direction):
     try:
         with  np.errstate(invalid='ignore', over='ignore'):
-            candidates = find_zero_crossings(series, direction)
+            candidates = util.find_zero_crossings(series, direction)
     except ValueError as e:
         message, bad_direction = e.args
         assert message == 'Invalid choice of direction:'
-        assert bad_direction not in VALID_ZERO_CROSSING_DIRECTIONS
+        assert bad_direction not in util.VALID_ZERO_CROSSING_DIRECTIONS
     else:
         assert candidates.dtype == np.bool
         assert len(candidates) == len(series)
@@ -96,10 +96,8 @@ def test_find_zero_crossings(series, direction):
 from sfft.util import path_with_stab
 import os
 
-from sfft.util import VALID_IMAGE_EXTENSIONS
 
-
-@given(st.text(min_size=1), st.sampled_from(VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
 def test_path_with_stab(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
@@ -107,36 +105,32 @@ def test_path_with_stab(path, ext):
     orig_folder, orig_filename = os.path.split(path)
     output = path_with_stab(path)
     folder, filename = os.path.split(output)
-    assert filename.startswith(STABILIZE_PREFIX)
+    assert filename.startswith(util.STABILIZE_PREFIX)
     assert orig_folder == folder
-    if STABILIZE_PREFIX in orig_filename:
+    if util.STABILIZE_PREFIX in orig_filename:
         assert path == output
 
 
-from sfft.util import basename_without_stab
-
-
-@given(st.text(min_size=1), st.sampled_from(VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
 def test_basename_without_stab(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
     path += ext
     image_path_with_stab = path_with_stab(path)
-    assert basename_without_stab(image_path_with_stab) == os.path.splitext(os.path.basename(path))[0]
+    assert util.basename_without_stab(image_path_with_stab) == os.path.splitext(os.path.basename(path))[0]
 
 
-@given(st.text(min_size=1), st.sampled_from(VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
 def test_stab_roundtrip(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
     path += ext
     dirname = os.path.dirname(path)
-    assert basename_without_stab(path_with_stab(path)) == os.path.splitext(os.path.basename(path))[0]
+    assert util.basename_without_stab(path_with_stab(path)) == os.path.splitext(os.path.basename(path))[0]
     path = path_with_stab(path)
-    assert os.path.join(dirname, path_with_stab(basename_without_stab(path) + ext)) == path
+    assert os.path.join(dirname, path_with_stab(util.basename_without_stab(path) + ext)) == path
 
 
-from sfft.util import quadratic_subpixel_extremum_2d
 
 
 @given(st.one_of(rnd_shape_images('f8', min_len=3, max_len=20),
@@ -149,7 +143,7 @@ def test_quadratic_subpixel_extremum(image, a, b):
     r, c = image.shape
     r = int((r - 2) * a) + 1
     c = int((c - 2) * b) + 1
-    output = quadratic_subpixel_extremum_2d(image, (r, c))
+    output = util.quadratic_subpixel_extremum_2d(image, (r, c))
     assert np.linalg.norm(output - np.array([r, c]), np.inf) < 1
 
 
@@ -161,7 +155,7 @@ def test_qse_centroid_recovery(img_pos):
     assume(0 < min_r < r - 1)
     assume(0 < min_c < c - 1)
 
-    assert np.allclose(quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6)
+    assert np.allclose(util.quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6)
 
 
 @given(st.one_of(rnd_len_arrays('f8', min_len=3, max_len=10),
@@ -169,7 +163,7 @@ def test_qse_centroid_recovery(img_pos):
        unit_interval_floats())
 def test_qse_1d(array, index):
     index = int((len(array) - 2) * index) + 1
-    output = quadratic_subpixel_extremum_1d(array, index)
+    output = util.quadratic_subpixel_extremum_1d(array, index)
     assert abs(output - index) < 1
 
 
@@ -182,4 +176,4 @@ def test_qse_1d_centroid_recovery(a, b, c):
     array = c * (np.linspace(-1, 1, a) - peak_shift)
     array *= array
     index = np.argmin(array)
-    assert approx((peak_shift + 1) * array_center) == quadratic_subpixel_extremum_1d(array, index)
+    assert approx((peak_shift + 1) * array_center) == util.quadratic_subpixel_extremum_1d(array, index)
