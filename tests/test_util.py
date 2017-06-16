@@ -22,31 +22,50 @@ def rnd_shape_images(dtype, min_len=0, max_len=3, elements=None):
     return shapes.flatmap(lambda n: arrays(dtype, n, elements=elements))
 
 
-@st.composite
-def image_with_peak(draw, min_size=3, max_size=60, max_curvature=1e3, max_eccentricity=1e3):
-    rows = draw(st.integers(min_value=min_size, max_value=max_size))
-    cols = draw(st.integers(min_value=min_size, max_value=max_size))
-    peak_y = draw(st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
-    peak_x = draw(st.floats(min_value=-1, max_value=1, allow_nan=False, allow_infinity=False))
-    eccentricity = draw(
-        st.floats(min_value=1 / max_eccentricity, max_value=max_eccentricity, allow_nan=False, allow_infinity=False))
-    curvature = draw(
-        st.floats(min_value=1 / max_curvature, max_value=max_curvature, allow_nan=False, allow_infinity=False))
+def paraboloid(rows, cols, r, c, eccentricity, curvature, theta, ):
+    # Eqn of elliptical paraboloid for reference
+    # z=(((x-x0)/a)**2+((y-y0)/b)**2)+c
+    # TODO: fix rotation
 
-    # TODO: introduce a direction for the eccentricity
-    # theta = np.pi/2*draw(unit_interval_floats())
+    colshift = (2 * c / (cols - 1) - 1)
+    rowshift = (2 * r / (rows - 1) - 1)
+
     # sin = np.sin(theta)
     # cos = np.cos(theta)
-    # z=(((x-x0)/a)**2+((y-y0)/b)**2)+c
+    # colshift = cos*colshift + sin * rowshift
+    # rowshift = sin*colshift + cos * rowshift
 
-    center = (np.array([rows, cols]) - 1) / 2
-    peak_position = center * (1 + np.array([peak_y, peak_x]))
-    j = np.linspace(-1, 1, rows) - peak_y
-    i = np.linspace(-1, 1, cols) - peak_x
-    ii, jj = np.meshgrid((curvature * i) ** 2, (curvature * eccentricity * j) ** 2)
-    image = ii + jj
+    i = np.linspace(-1, 1, cols) - colshift
+    j = np.linspace(-1, 1, rows) - rowshift
+    x = curvature * i
+    y = curvature * eccentricity * j
+    xx, yy = np.meshgrid(x, y)
 
-    return image, peak_position
+    # xx = xx * cos + yy * sin
+    # yy = yy * cos + xx * sin
+
+    return xx ** 2 + yy ** 2
+
+
+def paraboloid_params(max_curvature=1e2, max_eccentricity=1e2):
+    return (st.floats(min_value=1 / max_eccentricity,
+                      max_value=max_eccentricity,
+                      allow_nan=False,
+                      ),
+            st.floats(min_value=1 / max_curvature,
+                      max_value=max_curvature,
+                      allow_nan=False,
+                      ),
+            st.floats(min_value=0,
+                      max_value=np.pi / 4,
+                      allow_nan=False,
+                      ),
+            )
+
+
+def point_of_interest(image_shape):
+    rows, cols = image_shape
+    return st.tuples(st.floats(min_value=0, max_value=rows - 1), st.floats(min_value=0, max_value=cols - 1))
 
 
 def unit_interval_floats(allow_nan=False):
@@ -147,15 +166,33 @@ def test_quadratic_subpixel_extremum(image, a, b):
     assert np.linalg.norm(output - np.array([r, c]), np.inf) < 1
 
 
-@given(image_with_peak())
-def test_qse_centroid_recovery(img_pos):
-    image, position = img_pos
-    r, c = image.shape
-    min_pixel_loc = min_r, min_c = np.unravel_index(np.argmin(image), (r, c))
-    assume(0 < min_r < r - 1)
-    assume(0 < min_c < c - 1)
+@given(st.integers(min_value=3, max_value=5),
+       st.integers(min_value=3, max_value=5),
+       st.floats(min_value=0, max_value=4),
+       st.floats(min_value=0, max_value=4),
+       *paraboloid_params(),
+       )
+def test_qse_centroid_recovery(rows, cols, r, c, eccentricity, curvature, theta):
+    # restrict centroid to within image
+    # assume is easier to use than st.data or strategy.flatmap
+    assume(0 < r < rows - 1)
+    assume(0 < c < cols - 1)
 
-    assert np.allclose(util.quadratic_subpixel_extremum_2d(image, min_pixel_loc), position, rtol=1e-3, atol=1e-6)
+    position = r, c
+    image = paraboloid(rows, cols, r, c, eccentricity, curvature, theta)
+    min_pixel_loc = min_r, min_c = np.unravel_index(np.argmin(image), (rows, cols))
+
+    # if the min/max pixel is on the border, qse will try to index out of bounds
+    assume(0 < min_r < rows - 1)
+    assume(0 < min_c < cols - 1)
+
+    # if the paraboloid has two adjacent min/max pixels, it may choose the "wrong" one
+    mask = np.ones((rows, cols), dtype=bool)
+    mask[min_pixel_loc] = False
+    assume(np.all(image[mask] != image[min_pixel_loc]))
+
+    recovered_position = util.quadratic_subpixel_extremum_2d(image, min_pixel_loc)
+    assert np.allclose(recovered_position, position, rtol=1e-3, atol=1e-6)
 
 
 @given(st.one_of(rnd_len_arrays('f8', min_len=3, max_len=10),
