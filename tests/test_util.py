@@ -1,6 +1,6 @@
 import hypothesis.strategies as st
 import numpy as np
-from hypothesis import given, settings, assume
+from hypothesis import given, settings, assume, event
 from hypothesis.extra.numpy import arrays
 from pytest import approx
 
@@ -95,7 +95,7 @@ def test_wavelet_filter(series, sigma, bandwidth):
 
 
 @given(rnd_len_arrays('f8', min_len=100, max_len=1000),
-       st.one_of(st.sampled_from(util.VALID_ZERO_CROSSING_DIRECTIONS),
+       st.one_of(st.sampled_from(sorted(util.VALID_ZERO_CROSSING_DIRECTIONS)),
                  st.text(min_size=3, max_size=20)))
 @settings(buffer_size=2 ** 16, max_examples=40)  # ,suppress_health_check=[HealthCheck.too_slow])
 def test_find_zero_crossings(series, direction):
@@ -116,7 +116,7 @@ from sfft.util import path_with_stab
 import os
 
 
-@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(sorted(util.VALID_IMAGE_EXTENSIONS)))
 def test_path_with_stab(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
@@ -130,7 +130,7 @@ def test_path_with_stab(path, ext):
         assert path == output
 
 
-@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(sorted(util.VALID_IMAGE_EXTENSIONS)))
 def test_basename_without_stab(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
@@ -139,7 +139,7 @@ def test_basename_without_stab(path, ext):
     assert util.basename_without_stab(image_path_with_stab) == os.path.splitext(os.path.basename(path))[0]
 
 
-@given(st.text(min_size=1), st.sampled_from(util.VALID_IMAGE_EXTENSIONS))
+@given(st.text(min_size=1), st.sampled_from(sorted(util.VALID_IMAGE_EXTENSIONS)))
 def test_stab_roundtrip(path, ext):
     assume('.' not in path)
     assume(os.path.basename(path))
@@ -166,8 +166,8 @@ def test_quadratic_subpixel_extremum(image, a, b):
     assert np.linalg.norm(output - np.array([r, c]), np.inf) < 1
 
 
-@given(st.integers(min_value=3, max_value=5),
-       st.integers(min_value=3, max_value=5),
+@given(st.integers(min_value=3, max_value=50),
+       st.integers(min_value=3, max_value=50),
        st.floats(min_value=0, max_value=4),
        st.floats(min_value=0, max_value=4),
        *paraboloid_params(),
@@ -177,6 +177,7 @@ def test_qse_centroid_recovery(rows, cols, r, c, eccentricity, curvature, theta)
     # assume is easier to use than st.data or strategy.flatmap
     assume(0 < r < rows - 1)
     assume(0 < c < cols - 1)
+    event('centroid in image')
 
     position = r, c
     image = paraboloid(rows, cols, r, c, eccentricity, curvature, theta)
@@ -185,11 +186,13 @@ def test_qse_centroid_recovery(rows, cols, r, c, eccentricity, curvature, theta)
     # if the min/max pixel is on the border, qse will try to index out of bounds
     assume(0 < min_r < rows - 1)
     assume(0 < min_c < cols - 1)
+    event('argmin within border')
 
     # if the paraboloid has two adjacent min/max pixels, it may choose the "wrong" one
     mask = np.ones((rows, cols), dtype=bool)
     mask[min_pixel_loc] = False
     assume(np.all(image[mask] != image[min_pixel_loc]))
+    event('single minimum')
 
     recovered_position = util.quadratic_subpixel_extremum_2d(image, min_pixel_loc)
     assert np.allclose(recovered_position, position, rtol=1e-3, atol=1e-6)
