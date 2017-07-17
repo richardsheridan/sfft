@@ -12,7 +12,6 @@ from .vendored_scipy import fftconvolve as convolve, ricker, gaussian
 STABILIZE_PREFIX = 'stab_'
 VALID_IMAGE_EXTENSIONS = frozenset(('.tif', '.jpg', '.png'))
 VALID_ZERO_CROSSING_DIRECTIONS = frozenset(('upward', 'downward', 'all'))
-PARALLEL_BATCH_PROCESSING = True
 
 PIXEL_SIZE_X = .7953179315  # microns per pixel
 PIXEL_SIZE_Y = .347386919  # microns per pixel
