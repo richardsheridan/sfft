@@ -511,7 +511,7 @@ class TkBackend(Backend):
         if master is None:
             from tkinter import Tk
             master = Tk()
-            master.protocol("WM_DELETE_WINDOW", self.on_closing)
+            master.protocol("WM_DELETE_WINDOW", self._on_closing)
         self.master = master
         self.fig = Figure(figsize=size)
         self.canvas = FigureCanvasTkAgg(self.fig, master=master)
@@ -530,7 +530,7 @@ class TkBackend(Backend):
         master.grid_rowconfigure(2, weight=0)
         master.grid_columnconfigure(0, weight=1)
 
-    def on_closing(self):
+    def _on_closing(self):
         self.master.quit()
         self.master.destroy()
 
