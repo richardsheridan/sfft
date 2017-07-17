@@ -158,6 +158,7 @@ def load_breaks(directory, output=None):
     i = {'absolute': 0,
          'relative': 1,
          'count': 2,
+         'both': slice(-1)
          }.get(output, output)
 
     return OrderedDict((name, data[name][i]) for name in sorted(data))

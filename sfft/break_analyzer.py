@@ -16,7 +16,7 @@ ANALYSIS_FILENAME = 'analysis.json'
 class AnalyzerGUI(GUIPage):
     def __init__(self, image_paths, stabilize_args=(), fid_args=(), break_args=(), **kw):
         self.image_paths = image_paths
-        self.breaks_dict = load_breaks(path.dirname(image_paths[0]), 'absolute')
+        self.breaks_dict = load_breaks(path.dirname(image_paths[0]), 'both')
         self.load_args = (stabilize_args, fid_args, break_args)
         self.nobreaks = False
 
@@ -33,7 +33,8 @@ class AnalyzerGUI(GUIPage):
         self.add_slider('frame_number', self.full_reload, valmin=0, valmax=len(self.image_paths) - 1,
                         valinit=0,
                         label='Frame Number', isparameter=False, forceint=True)
-        self.add_slider('break_position', self.update_vision, valmin=0, valmax=1, valinit=0.5, label='Break Position',
+        self.add_slider('break_position', self.update_vision, valmin=-.5, valmax=1.5, valinit=0.5,
+                        label='Break Position',
                         isparameter=False)
         self.add_slider('width', self.update_vision, valmin=0.001, valmax=.009, valinit=0.00311855,
                         label='Window Width',
@@ -48,13 +49,13 @@ class AnalyzerGUI(GUIPage):
     def recalculate_vision(self):
         image = self.pyramid[0]
         name = basename_without_stab(self.image_paths[self.slider_value('frame_number')])
-        breaks = np.array(self.breaks_dict[name])
+        breaks, rel_breaks = [np.array(x) for x in self.breaks_dict[name]]
         if not len(breaks[1]):
             self.nobreaks = True
             return
         else:
             self.nobreaks = False
-        i = np.argmin(abs(breaks[1] - self.slider_value('break_position')))
+        i = np.argmin(abs(rel_breaks - self.slider_value('break_position')))
         self.centroid = centroid = breaks[:, i]
         print(centroid)
         self.break_image = select_break_image(image, centroid, width=self.slider_value('width'))
@@ -195,7 +196,7 @@ def sorted_centroids(break_y, break_x):
 def analyze_breaks(image_path, breaks_dict, width):
     name = basename_without_stab(image_path)
     print('\n' + name + '\n')
-    break_y, break_x = breaks_dict[name]
+    break_y, break_x = breaks_dict[name][0]
     image = load_stab_img(image_path)
     result = []
     for break_centroid in zip(break_y, break_x):
