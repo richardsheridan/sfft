@@ -1,5 +1,5 @@
 import json
-from collections import namedtuple, OrderedDict
+from collections import namedtuple, OrderedDict, defaultdict
 from os import path
 
 import numpy as np
@@ -7,7 +7,7 @@ from .cvutil import sobel_filter, arg_min_max, make_pyramid
 from .fiber_locator import load_stab_img
 from .gui import GUIPage
 from .util import quadratic_subpixel_extremum_2d, find_zero_crossings, quadratic_subpixel_extremum_1d, \
-    PIXEL_SIZE_X, batch, basename_without_stab, get_files, dump
+    PIXEL_SIZE_X, batch, basename_without_stab, get_files, dump, path_with_stab
 
 from .break_locator import load_breaks
 
@@ -199,12 +199,24 @@ def analyze_breaks(image_path, breaks_dict, width):
     break_y, break_x = breaks_dict[name][0]
     image = load_stab_img(image_path)
     result = []
-    for break_centroid in zip(break_y, break_x):
+    for break_centroid in zip(*breaks_dict[name][0]):
         print('Centroid: ', break_centroid)
         break_image = select_break_image(image, break_centroid, width)
         gap_width, fiber_diameter = analyze_break(break_image)
         result.append((gap_width, fiber_diameter))
     return np.transpose(result) if result else (np.array([], dtype=int), np.array([], dtype=int))
+
+
+def collect_break_images(image_dir, width=0.003542372881355932):
+    header, data = load_breaks(image_dir)
+    result = defaultdict(list)
+    for name, (break_abs, break_rel, _) in data.items():
+        image_path = path_with_stab(path.join(image_dir, name + '.jpg'))
+        image = load_stab_img(image_path)
+        for break_centroid, break_pos in zip(zip(*break_abs), break_rel):
+            break_image = select_break_image(image, break_centroid, width)
+            result[round(break_pos, 2)].append((name, break_pos, break_image))
+    return result
 
 
 def save_analysis(parameters, analysis, images):
