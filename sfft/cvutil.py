@@ -4,6 +4,40 @@ import numpy as np
 from .util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
 
 
+def export_movie(path, images, framerate=5.0, codec=None):
+    assert len(images[0].shape) == 2  # Grayscale images only
+
+    if codec is None:
+        codec = -1
+    try:
+        codec = cv2.VideoWriter_fourcc(*codec.upper())
+    except:
+        pass
+
+    if codec == 1196444237:  # 'MJPG'
+        iscolor = True
+    else:
+        iscolor = False
+
+    vw = None
+    for img in images:
+        if vw is None:
+            vw = cv2.VideoWriter(path, codec, framerate, img.shape[::-1], iscolor)
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if iscolor else img
+        vw.write(img)
+    vw.release()
+
+
+def get_movie_fourcc(path):
+    import struct
+    CV_CAP_PROP_FOURCC = 6
+    a = cv2.VideoCapture(path)
+    x = a.get(CV_CAP_PROP_FOURCC)
+    a.release()
+    w = struct.unpack('4s', struct.pack('i', int(x)))[0].decode('ascii')
+    return w
+
+
 def argwhere(array):
     """ Return something that iterates over (r,c) indices of nonzero pixels
 
