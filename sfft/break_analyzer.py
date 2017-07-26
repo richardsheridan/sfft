@@ -3,13 +3,15 @@ from collections import namedtuple, OrderedDict, defaultdict
 from os import path
 
 import numpy as np
+
+from sfft import load_fids
 from .cvutil import sobel_filter, arg_min_max, make_pyramid
 from .fiber_locator import load_stab_img
 from .gui import GUIPage
 from .util import quadratic_subpixel_extremum_2d, find_zero_crossings, quadratic_subpixel_extremum_1d, \
     PIXEL_SIZE_X, batch, basename_without_stab, get_files, dump, path_with_stab
 
-from .break_locator import load_breaks
+from .break_locator import load_breaks, relative_to_absolute
 
 ANALYSIS_FILENAME = 'analysis.json'
 
@@ -207,17 +209,49 @@ def analyze_breaks(image_path, breaks_dict, width):
     return np.transpose(result) if result else (np.array([], dtype=int), np.array([], dtype=int))
 
 
-def collect_break_images(image_dir, width=0.003542372881355932):
-    header, data = load_breaks(image_dir)
-    result = defaultdict(list)
-    for name, (break_abs, break_rel, _) in data.items():
+def collect_break_images(image_dir, width=0.003542372881355932, threshold=.01):
+    data = load_breaks(image_dir, 'both')
+
+    # collect break data in one sorted list
+    break_centroids = []
+    for break_abs, break_rel in data.values():
+        for break_centroid, break_pos in zip(zip(*break_abs), break_rel):
+            break_centroids.append((break_pos, break_centroid))
+    break_centroids = sorted(break_centroids)
+
+    # group same breaks and find mean coordinates of each group
+    mean_break_rel = []
+    mean_centroid_y = []
+    same_centroids_y = []
+    mean_pos = np.nan
+    running_sum = 0.
+    running_count = 0
+    for break_pos, break_centroid in break_centroids:
+        if abs(break_pos - mean_pos) > threshold:
+            mean_break_rel.append(mean_pos)
+            mean_centroid_y.append(np.mean(same_centroids_y))
+            same_centroids_y = []
+            running_sum = 0.
+            running_count = 0
+            mean_pos = np.nan
+        else:
+            same_centroids_y.append(break_centroid[0])
+            running_sum += break_pos
+            running_count += 1
+            mean_pos = running_sum / running_count
+
+    # get the images off disk and pick out the same spots on each in one pass
+    break_images = defaultdict(list)
+    for name in sorted(data):
         image_path = path_with_stab(path.join(image_dir, name + '.jpg'))
         image = load_stab_img(image_path)
-        for break_centroid, break_pos in zip(zip(*break_abs), break_rel):
-            break_image = select_break_image(image, break_centroid, width)
-            result[round(break_pos, 2)].append((name, break_pos, break_image))
-    return result
+        fids = load_fids(image_path)
+        for break_pos, centroid_y in zip(mean_break_rel, mean_centroid_y):
+            centroid_x = relative_to_absolute(break_pos, fids)
+            break_centroid = (centroid_y, centroid_x)
+            break_images[break_pos].append(select_break_image(image, break_centroid, width))
 
+    return break_images
 
 def save_analysis(parameters, analysis, images):
     folder = path.dirname(images[0])

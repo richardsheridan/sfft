@@ -122,11 +122,30 @@ def locate_breaks(image_path, p_level, filter_width, mask_width, cutoff, neighbo
     sortind = np.argsort(peak_x)
     peak_y, peak_x = peak_y[sortind], peak_x[sortind]
 
-    locations = peak_y / (rows - 1), peak_x / (cols - 1)
-    relative_locations = (locations[1] - fids[0]) / (fids[1] - fids[0])
+    locations = pixel_to_absolute((peak_y, peak_x), image.shape)
+    relative_locations = absolute_to_relative(locations[1], fids)
     fiducial_break_count = np.count_nonzero((0 < relative_locations) & (relative_locations < 1))
     return locations, relative_locations, fiducial_break_count
 
+
+def absolute_to_relative(xlocations, fids):
+    return (xlocations - fids[0]) / (fids[1] - fids[0])
+
+
+def relative_to_absolute(relative_locations, fids):
+    return (relative_locations * (fids[1] - fids[0])) + fids[0]
+
+
+def pixel_to_absolute(peaks, shape):
+    peak_y, peak_x = peaks
+    rows, cols = shape
+    return peak_y / (rows - 1), peak_x / (cols - 1)
+
+
+def absolute_to_pixel(locations, shape):
+    ylocations, xlocations = locations
+    rows, cols = shape
+    return ylocations * (rows - 1), xlocations * (cols - 1)
 
 def save_breaks(parameters, breaks, images):
     folder = path.dirname(images[0])
