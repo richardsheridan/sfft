@@ -4,11 +4,14 @@ import numpy as np
 from .util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
 
 
-def export_movie(path, images, framerate=5.0, codec=None):
-    assert len(images[0].shape) == 2  # Grayscale images only
+def export_movie(path, images, framerate=5.0, codec='MRLE'):
+    shape = images[0].shape[::-1]
+    assert len(shape) == 2  # Grayscale images only
 
     if codec is None:
+        # Display a GUI dialog to select from available codecs
         codec = -1
+
     try:
         codec = cv2.VideoWriter_fourcc(*codec.upper())
     except:
@@ -19,13 +22,18 @@ def export_movie(path, images, framerate=5.0, codec=None):
     else:
         iscolor = False
 
-    vw = None
-    for img in images:
-        if vw is None:
-            vw = cv2.VideoWriter(path, codec, framerate, img.shape[::-1], iscolor)
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR) if iscolor else img
-        vw.write(img)
-    vw.release()
+    vw = cv2.VideoWriter(path, codec, framerate, shape, iscolor)
+    try:
+        for img in images:
+            if img.shape[::-1] != shape:
+                raise ValueError
+            if iscolor:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            vw.write(img)
+    except:
+        raise
+    finally:
+        vw.release()
 
 
 def get_movie_fourcc(path):

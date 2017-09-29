@@ -220,6 +220,7 @@ def collect_break_images(image_dir, width=0.003542372881355932, threshold=.01):
     break_centroids = sorted(break_centroids)
 
     # group same breaks and find mean coordinates of each group
+    # TODO: the image is not stable enough to just use the mean coordinates
     mean_break_rel = []
     mean_centroid_y = []
     same_centroids_y = []
