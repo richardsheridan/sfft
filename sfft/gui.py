@@ -277,7 +277,15 @@ class MPLWidgetWrapper(WidgetWrapper):
 
 
 class TkWidgetWrapper(WidgetWrapper):
-    _callbacks = None
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._callbacks = []
+
+        def combined_callback(*a, **kw):
+            for cb in self._callbacks:
+                cb(*a, *kw)
+
+        self.widget.config(command=combined_callback)
 
     def get(self):
         v = self.widget.get()
@@ -289,18 +297,9 @@ class TkWidgetWrapper(WidgetWrapper):
         self.widget.set(val)
 
     def register(self, callback):
-        if self._callbacks is None:
-            self._callbacks = []
-
         if self.forceint:
             callback = _force_int(callback, self.set)
         self._callbacks.append(callback)
-
-        def combined_callback(*a, **kw):
-            for cb in self._callbacks:
-                cb(*a, *kw)
-
-        self.widget.config(command=combined_callback)
 
 
 class TkRbConsolidator:
