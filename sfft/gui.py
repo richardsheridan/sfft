@@ -106,6 +106,7 @@ class GUIPage:
         self.pyramid = self.future_pyramids[self.slider_value('frame_number')].result()
 
     def full_reload(self, *args, **kwargs):
+        #TODO: get rid of all mentions of load_args
         if self.dirty or (self.future_pyramids is None) or (self.load_args != self._old_load_args):
             self.future_pyramids = batch(self.load_image_to_pyramid, self.image_paths, *self.load_args,
                                          return_futures=True)

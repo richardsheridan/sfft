@@ -51,12 +51,15 @@ executor = None
 
 def batch(func, image_paths, *args, return_futures=False):
     """
-    Submit a batch of image_paths to be processed with function func and supplimental arguments args.
+    Submit a batch of image_paths to be processed with function func and supplemental arguments args.
     
     By default we block and computer/return the results in order they were submitted. Optionally, you
     can return some Futures with the return_futures keyword argument and request the result as needed.
     
-    Parallelism is determined by the class of executor from the module scope
+    Parallelism is determined by the class of executor from the module scope.
+
+    ProcessPoolExecutor requires func to be pickleable. The easiest way to guarantee this
+    is to make sure it is not a bound method. For GUIPage classes, I chose to use a staticmethod.
 
     Parameters
     ----------
@@ -76,6 +79,7 @@ def batch(func, image_paths, *args, return_futures=False):
         # executor = cf.ThreadPoolExecutor()
         # executor = SynchronousExecutor()
 
+    #TODO: test if func NEEDS to be a static method or function, rather than a bound method
     futures = [executor.submit(func, image_path, *args) for image_path in image_paths]
     if return_futures:
         return futures
