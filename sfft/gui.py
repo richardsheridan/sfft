@@ -86,6 +86,7 @@ class GUIPage:
         self.artists = {}
         self.buttons = {}
         self.sliders = {}
+        self.displays = {}
         self._parameter_sliders = []
         self.future_pyramids = None
         self.dirty = True
@@ -157,6 +158,9 @@ class GUIPage:
 
     def button_value(self, name):
         return self.buttons[name].get()
+
+    def add_display(self, name, size=6):
+        d = self.displays[name] = self.backend.make_display(name,size)
 
     def add_button(self, name, callback, **kwargs):
         """
@@ -285,8 +289,15 @@ class TkWidgetWrapper(WidgetWrapper):
         def combined_callback(*a, **kw):
             for cb in self._callbacks:
                 cb(*a, *kw)
-
-        self.widget.config(command=combined_callback)
+        try:
+            from tkinter import TclError
+            self.widget.config(command=combined_callback)
+        except TclError as e:
+            if str(e) != 'unknown option "-command"':
+                raise
+        except AttributeError as e:
+            if not str(e).endswith("object has no attribute 'config'"):
+                raise
 
     def get(self):
         v = self.widget.get()
@@ -346,6 +357,9 @@ class Backend:
         raise NotImplementedError
 
     def make_radiobuttons(self, name, labels=None):
+        raise NotImplementedError
+
+    def make_display(self, name, size):
         raise NotImplementedError
 
     def show(self, block):
@@ -539,6 +553,14 @@ class TkBackend(Backend):
         if block:
             self.master.mainloop()
 
+    def make_display(self, name, size=6):
+        from tkinter import StringVar
+        from tkinter.ttk import Label
+        sv = StringVar(self.widget_frame,value='init')
+        l = self._labels[name + 'disp'] = Label(self.widget_frame, textvariable=sv, anchor='e')
+        l.pack()
+        return TkWidgetWrapper(sv)
+
     def make_slider(self, name, valmin, valmax, valinit, valfmt, label, forceint):
         from tkinter import IntVar, DoubleVar, StringVar
         from tkinter.ttk import Label, Scale, Frame
@@ -587,7 +609,7 @@ class TkBackend(Backend):
         f = Frame(self.widget_frame, relief='groove', borderwidth=2)
         for label in labels:
             b = self._radiobuttons[name + label] = Radiobutton(f, variable=v, text=label, value=label)
-            b.pack(anchor='w')
+            b.pack(anchor='w', side='left')
         f.pack()
         return TkWidgetWrapper(TkRbConsolidator(self._radiobuttons.values(), v))
 

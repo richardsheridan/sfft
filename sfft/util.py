@@ -102,9 +102,9 @@ def get_files():
     tk.withdraw()
 
     # show an "Open" dialog box and return the paths to the selected files
-    fullpaths = askopenfilename(multiple=1, filetypes=(('TIF', '.tif'),
+    fullpaths = askopenfilename(multiple=1, filetypes=(('Images', ('.tif', '.jpg', '.jpeg')),
+                                                       ('TIF', '.tif'),
                                                        ('JPEG', ('.jpg', '.jpeg')),
-                                                       ('Images', ('.tif', '.jpg', '.jpeg')),
                                                        ('All files', '*')))
     fullpaths = sorted(os.path.normpath(path.lower()) for path in fullpaths)
 

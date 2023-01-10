@@ -1,21 +1,23 @@
+import cv2
 from os import path
+import numpy as np
 
 from .cvutil import make_pyramid, sobel_filter, puff_pyramid, correct_tdi_aspect, fit_line, \
-    rotate_image, imwrite, imread, binary_threshold, clipped_line_points
+    rotate_image, imwrite, imread, binary_threshold, clipped_line_points, laplacian_filter
 from .gui import GUIPage
 
-from .util import batch, get_files, path_with_stab, STABILIZE_PREFIX, vshift_from_si_shape
+from .util import get_files, STABILIZE_PREFIX, vshift_from_si_shape, find_zero_crossings
 
 STABILIZE_FILENAME = 'stabilize.json'
 
 
-class FiberGUI(GUIPage):
+class CrackGUI(GUIPage):
     def __init__(self, image_paths, **kw):
         """
         A concrete GUIPage for finding and stabilizing the fiber position.
-        
+
         Has no dependencies on other GUIPage results.
-        
+
         Parameters
         ----------
         image_paths : List[str]
@@ -31,80 +33,88 @@ class FiberGUI(GUIPage):
 
     def create_layout(self):
         self.add_axes('image')
+        self.add_axes('profile',share='x')
+        self.add_display('num_lines')
 
-        self.add_button('save', self.execute_batch, label='Save batch')
         self.add_radiobuttons('display_type', self.set_display_type,
-                              labels=('original', 'filtered', 'edges', 'rotated'))
+                              labels=('original', 'filtered'))
 
         self.add_slider('frame_number', self.update_frame_number, valmin=0, valmax=len(self.image_paths) - 1,
                         valinit=0,
                         label='Frame number', isparameter=False, forceint=True)
-        self.add_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 9 - 1, valinit=70,
-                        label='edge threshold')
-        self.add_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=0, label='Pyramid Level',
+        self.add_slider('p_level', self.update_edge, valmin=0, valmax=7, valinit=2, label='Pyramid Level',
                         forceint=True)
+        self.add_slider('line_angle', self.update_edge, valmin=-5, valmax=5, valinit=0,
+                        label='Angle correction',)
+        self.add_slider('threshold', self.update_edge, valmin=0, valmax=2 ** 4 - 1, valinit=5,
+                        label='Threshold')
 
     @staticmethod
     def load_image_to_pyramid(image_path):
         image = imread(image_path)
-        image = correct_tdi_aspect(image)
         pyramid = make_pyramid(image)
         return pyramid
 
     def recalculate_vision(self):
-        self.recalculate_edges()
-        self.recalculate_lines()
+        self.recalculate_filters()
+        self.recalculate_cracks()
 
-    def recalculate_edges(self):
-        threshold = self.slider_value('threshold')
+    def recalculate_filters(self):
         p_level = self.slider_value('p_level')
+        theta = self.slider_value('line_angle') * np.pi / 180
         image = self.pyramid[p_level]
-        self.filtered = image = sobel_filter(image, 0, 1)
-        self.edges = binary_threshold(image, threshold)
+        self.filtered = rotate_image(laplacian_filter(image),0,theta)
 
-    def recalculate_lines(self):
-        processed_image_array = self.edges
 
-        self.slope, self.intercept, self.theta = fit_line(processed_image_array)
+    def recalculate_cracks(self):
+        threshold = self.slider_value('threshold')
+        self.profile = filtered_profile = np.mean(self.filtered,axis=0)
+        left = np.roll(filtered_profile,shift=1,axis=0)
+        right = np.roll(filtered_profile,shift=-1,axis=0)
+        self.lines = (left < filtered_profile) & (filtered_profile > right) & (filtered_profile >= threshold)
+        # self.gradient = np.gradient(filtered_profile)
+        # self.lines = find_zero_crossings(self.gradient,'all') & (filtered_profile >= threshold)
 
-        # slope, intercept, theta = fit_line_fitline(processed_image_array)
-
-        self.vshift = vshift_from_si_shape(self.slope, self.intercept, processed_image_array.shape)
 
     def refresh_plot(self):
         self.clear('image')
+        if len(self.lines):
+            self.displays['num_lines'].set('Num lines: {:f}'.format(np.sum(self.lines)))
+        else:
+            self.displays['num_lines'].set('No lines')
         label = self.button_value('display_type')
-        if label == 'original':
+
+        if label == 'original' or label == 'lines':
             p_level = self.slider_value('p_level')
             image = self.pyramid[p_level]
         elif label == 'filtered':
-            image = self.filtered  # ((self.filtered+2**15)//256).astype('uint8')
-            image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-        elif label == 'edges':
-            image = self.edges * 255
-            image = puff_pyramid(self.pyramid, self.slider_value('p_level'), image=image)
-        elif label == 'rotated':
-            p_level = self.slider_value('p_level')
-            image = self.pyramid[p_level]
-            image = rotate_image(image, self.vshift, self.theta)
+            image = self.filtered
         else:
             print('unknown display type:', label)
             return
 
         self.display_image_array = image  # .astype('uint8')
         self.imshow('image', image)
-        if label != 'rotated':
-            self.plot('image', *clipped_line_points(image, self.slope, self.intercept), 'r-.')
+        # r,c = image.shape
+        # if label == 'lines':
+        #     for line in self.lines:
+        #         rho,theta = line[0]
+        #         a = np.cos(theta)
+        #         b = np.sin(theta)
+        #         x0 = a*rho
+        #         y0 = b*rho
+        #         x1 = (x0 + 1000*(-b))
+        #         y1 = (y0 + 1000*(a))
+        #         x2 = (x0 - 1000*(-b))
+        #         y2 = (y0 - 1000*(a))
+        #         self.plot('image',[x1,x2],[y1,y2],'-',xlim=[0,c], ylim=[0,r])
+        self.clear('profile')
+        x=np.arange(len(self.profile))
+        self.plot('profile',x,self.profile,'b-')
+        self.plot('profile',x[self.lines],self.profile[self.lines],'rx')
+        self.hline('profile',self.slider_value('threshold'), color='black', linestyle=':')
 
         self.draw()
-
-    def execute_batch(self, *a, **kw):
-        threshold, p_level = self.parameters.values()
-        return_image = False
-        save_image = True
-        images = self.image_paths
-        x = batch(stabilize_file,images, threshold, p_level, return_image, save_image)
-        save_stab(images, x, threshold, p_level)
 
     def set_display_type(self, *a, **kw):
         self.refresh_plot()
@@ -119,32 +129,11 @@ class FiberGUI(GUIPage):
         self.recalculate_vision()
         self.refresh_plot()
 
-
-def load_stab_data(stabilized_image_path):
-    dirname, basename = path.split(stabilized_image_path)
-    datfile = path.join(dirname, STABILIZE_FILENAME)
-
-    import json
-    with open(datfile) as fp:
-        header, data = json.load(fp)
-
-    key = basename.lower()
-    if key.startswith(STABILIZE_PREFIX):
-        key = key[len(STABILIZE_PREFIX):]
-    return data[key]
+    def update_line(self, *a, **kw):
+        self.recalculate_cracks()
+        self.refresh_plot()
 
 
-def load_stab_img(image_path, *stabilize_args):
-    stabilized_image_path = path_with_stab(image_path)
-    if path.exists(stabilized_image_path):
-        image = imread(stabilized_image_path)
-        # vshift, theta = load_stab_data(stabilized_image_path)
-    elif stabilize_args:
-        image = stabilize_file(image_path, *stabilize_args, return_image=True)
-    else:
-        #TODO: do we really want to silently fall back to opening the unstabilized TDI
-        image = correct_tdi_aspect(imread(image_path))
-    return image
 
 
 def stabilize_file(image_path, threshold, p_level, return_image=False, save_image=False):
@@ -190,7 +179,7 @@ def save_stab(image_paths, batch, threshold, p_level):
 
 if __name__ == '__main__':
     image_paths = get_files()
-    a = FiberGUI(image_paths)
+    a = CrackGUI(image_paths)
     # print(a.sliders['threshold'].val)
     #
     # from cProfile import run

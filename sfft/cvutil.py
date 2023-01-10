@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from .util import PIXEL_SIZE_Y, PIXEL_SIZE_X, si_from_ct
-
+jcbe
 
 def export_movie(path, images, framerate=5.0, codec='MRLE'):
     shape = images[0].shape[::-1]
@@ -310,7 +310,7 @@ def fit_line_moments(processed_image_array):
     return slope, intercept, theta
 
 
-def rotate_fiber(image, vshift, theta, overwrite=False):
+def rotate_image(image, vshift, theta, overwrite=False):
     image = np.array(image, copy=not overwrite)
     y_size, x_size = image.shape
     mean = int(image.mean())
